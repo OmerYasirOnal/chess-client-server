@@ -192,214 +192,26 @@ public class ChessBoard implements Serializable {
         checkGameState();
     }
     
-    // Check if king is in check (whether a player's king is under threat)
-    public boolean isInCheck(ChessPiece.PieceColor kingColor) {
-        // Find the king's position
-        int kingRow = -1, kingCol = -1;
-        
-        for (int row = 0; row < BOARD_SIZE; row++) {
-            for (int col = 0; col < BOARD_SIZE; col++) {
-                ChessPiece piece = board[row][col];
-                if (piece != null && 
-                    piece.getType() == ChessPiece.PieceType.KING && 
-                    piece.getColor() == kingColor) {
-                    kingRow = row;
-                    kingCol = col;
-                    break;
-                }
-            }
-            if (kingRow != -1) break;
-        }
-        
-        if (kingRow == -1) return false; // King not found
-        
-        // Check if king's position is under attack
-        return isSquareUnderAttack(kingRow, kingCol, kingColor);
-    }
-    
-    // Calculate all valid moves for a piece
-    private List<Point> calculatePieceMoves(int row, int col, ChessPiece piece) {
-        List<Point> moves = new ArrayList<>();
-        
-        switch (piece.getType()) {
-            case PAWN:
-                calculatePawnMoves(row, col, piece, moves);
-                break;
-            case ROOK:
-                calculateStraightMoves(row, col, piece, true, false, moves);
-                break;
-            case KNIGHT:
-                calculateKnightMoves(row, col, piece, moves);
-                break;
-            case BISHOP:
-                calculateStraightMoves(row, col, piece, false, true, moves);
-                break;
-            case QUEEN:
-                calculateStraightMoves(row, col, piece, true, true, moves);
-                break;
-            case KING:
-                calculateKingMoves(row, col, piece, moves);
-                break;
-        }
-        
-        return moves;
-    }
-    
-    private void calculatePawnMoves(int row, int col, ChessPiece piece, List<Point> moves) {
-        int direction = (piece.getColor() == ChessPiece.PieceColor.WHITE) ? -1 : 1;
-        
-        // Forward movement
-        if (isValidPosition(row + direction, col) && board[row + direction][col] == null) {
-            moves.add(new Point(row + direction, col));
-            
-            // Can move two squares on first move
-            if (!piece.hasMoved() && 
-                isValidPosition(row + 2 * direction, col) && 
-                board[row + 2 * direction][col] == null) {
-                moves.add(new Point(row + 2 * direction, col));
-            }
-        }
-        
-        // Diagonal capture moves
-        for (int offset : new int[]{-1, 1}) {
-            if (isValidPosition(row + direction, col + offset)) {
-                ChessPiece targetPiece = board[row + direction][col + offset];
-                if (targetPiece != null && targetPiece.getColor() != piece.getColor()) {
-                    moves.add(new Point(row + direction, col + offset));
-                } 
-                // En passant check
-                else if (targetPiece == null && lastMoveWasDoublePawnPush) {
-                    // If there's a pawn in the adjacent square that just moved two squares
-                    if (row == lastPawnMoveRow && col + offset == lastPawnMoveCol) {
-                        ChessPiece pawnToCapture = board[row][col + offset];
-                        if (pawnToCapture != null && 
-                            pawnToCapture.getType() == ChessPiece.PieceType.PAWN && 
-                            pawnToCapture.getColor() != piece.getColor()) {
-                            moves.add(new Point(row + direction, col + offset));
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    private void calculateStraightMoves(int row, int col, ChessPiece piece, 
-                                     boolean straightLines, boolean diagonalLines, List<Point> moves) {
-        // Straight movements (horizontal and vertical)
-        if (straightLines) {
-            int[][] directions = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}}; // Right, down, left, up
-            
-            for (int[] dir : directions) {
-                for (int i = 1; i < BOARD_SIZE; i++) {
-                    int newRow = row + i * dir[0];
-                    int newCol = col + i * dir[1];
-                    
-                    if (!isValidPosition(newRow, newCol)) {
-                        break;
-                    }
-                    
-                    ChessPiece targetPiece = board[newRow][newCol];
-                    if (targetPiece == null) {
-                        moves.add(new Point(newRow, newCol));
-                    } else {
-                        if (targetPiece.getColor() != piece.getColor()) {
-                            moves.add(new Point(newRow, newCol));
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Diagonal movements
-        if (diagonalLines) {
-            int[][] directions = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}}; // Down-right, down-left, up-left, up-right
-            
-            for (int[] dir : directions) {
-                for (int i = 1; i < BOARD_SIZE; i++) {
-                    int newRow = row + i * dir[0];
-                    int newCol = col + i * dir[1];
-                    
-                    if (!isValidPosition(newRow, newCol)) {
-                        break;
-                    }
-                    
-                    ChessPiece targetPiece = board[newRow][newCol];
-                    if (targetPiece == null) {
-                        moves.add(new Point(newRow, newCol));
-                    } else {
-                        if (targetPiece.getColor() != piece.getColor()) {
-                            moves.add(new Point(newRow, newCol));
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    
-    private void calculateKnightMoves(int row, int col, ChessPiece piece, List<Point> moves) {
-        int[][] knightMoves = {
-            {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2},
-            {1, -2}, {1, 2}, {2, -1}, {2, 1}
-        };
-        
-        for (int[] move : knightMoves) {
-            int newRow = row + move[0];
-            int newCol = col + move[1];
-            
-            if (isValidPosition(newRow, newCol)) {
-                ChessPiece targetPiece = board[newRow][newCol];
-                if (targetPiece == null || targetPiece.getColor() != piece.getColor()) {
-                    moves.add(new Point(newRow, newCol));
-                }
-            }
-        }
-    }
-    
-    private void calculateKingMoves(int row, int col, ChessPiece piece, List<Point> moves) {
-        int[][] kingMoves = {
-            {-1, -1}, {-1, 0}, {-1, 1},
-            {0, -1},           {0, 1},
-            {1, -1},  {1, 0},  {1, 1}
-        };
-        
-        for (int[] move : kingMoves) {
-            int newRow = row + move[0];
-            int newCol = col + move[1];
-            
-            if (isValidPosition(newRow, newCol)) {
-                ChessPiece targetPiece = board[newRow][newCol];
-                if (targetPiece == null || targetPiece.getColor() != piece.getColor()) {
-                    // The king cannot move to a square that is under attack
-                    if (!isSquareUnderAttack(newRow, newCol, piece.getColor())) {
-                        moves.add(new Point(newRow, newCol));
-                    }
-                }
-            }
-        }
-        
-        // Check castling - ensure king is not in check and will not pass through check
-        if (!piece.hasMoved() && !isInCheck(piece.getColor())) {
-            // Kingside castling
-            if (canCastle(row, col, true, piece.getColor())) {
-                moves.add(new Point(row, col + 2));
-            }
-            
-            // Queenside castling
-            if (canCastle(row, col, false, piece.getColor())) {
-                moves.add(new Point(row, col - 2));
-            }
-        }
-    }
-    
-    // Check if a square is under attack by the opponent of the given king color
+    /**
+     * Checks if a specified square is under attack for a piece of the specified color.
+     * This method is used to determine if a square is threatened by opponent pieces.
+     * Especially useful for determining safe squares where the king can move.
+     * 
+     * For pawn threats, pawns only threaten squares diagonally (not forward):
+     * - White pawns threaten squares in the upper-right and upper-left diagonals
+     * - Black pawns threaten squares in the lower-right and lower-left diagonals
+     * 
+     * @param targetRow       Row index of the square to check
+     * @param targetCol       Column index of the square to check
+     * @param kingColor       Color of the king (the color of the player being checked for threats)
+     * @return                True if the square is under attack, false otherwise
+     */
     private boolean isSquareUnderAttack(int targetRow, int targetCol, ChessPiece.PieceColor kingColor) {
         ChessPiece.PieceColor opponentColor = (kingColor == ChessPiece.PieceColor.WHITE) ? 
                 ChessPiece.PieceColor.BLACK : ChessPiece.PieceColor.WHITE;
         
         // Check for attacks along straight lines (rook and queen)
-        int[][] straightDirections = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+        int[][] straightDirections = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}}; // Right, down, left, up
         for (int[] dir : straightDirections) {
             for (int i = 1; i < BOARD_SIZE; i++) {
                 int newRow = targetRow + i * dir[0];
@@ -423,8 +235,44 @@ public class ChessBoard implements Serializable {
             }
         }
         
-        // Check for attacks along diagonals (bishop, queen, and pawn)
-        int[][] diagonalDirections = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
+        // Special check for pawn threats
+        // Pawns only threaten diagonally
+        if (kingColor == ChessPiece.PieceColor.WHITE) {
+            // Check for white king - black pawns threaten diagonally upward
+            if (isValidPosition(targetRow + 1, targetCol - 1)) {
+                ChessPiece piece = board[targetRow + 1][targetCol - 1];
+                if (piece != null && piece.getColor() == ChessPiece.PieceColor.BLACK && 
+                    piece.getType() == ChessPiece.PieceType.PAWN) {
+                    return true; // Black pawn threatening from lower-left diagonal
+                }
+            }
+            if (isValidPosition(targetRow + 1, targetCol + 1)) {
+                ChessPiece piece = board[targetRow + 1][targetCol + 1];
+                if (piece != null && piece.getColor() == ChessPiece.PieceColor.BLACK && 
+                    piece.getType() == ChessPiece.PieceType.PAWN) {
+                    return true; // Black pawn threatening from lower-right diagonal
+                }
+            }
+        } else {
+            // Check for black king - white pawns threaten diagonally downward
+            if (isValidPosition(targetRow - 1, targetCol - 1)) {
+                ChessPiece piece = board[targetRow - 1][targetCol - 1];
+                if (piece != null && piece.getColor() == ChessPiece.PieceColor.WHITE && 
+                    piece.getType() == ChessPiece.PieceType.PAWN) {
+                    return true; // White pawn threatening from upper-left diagonal
+                }
+            }
+            if (isValidPosition(targetRow - 1, targetCol + 1)) {
+                ChessPiece piece = board[targetRow - 1][targetCol + 1];
+                if (piece != null && piece.getColor() == ChessPiece.PieceColor.WHITE && 
+                    piece.getType() == ChessPiece.PieceType.PAWN) {
+                    return true; // White pawn threatening from upper-right diagonal
+                }
+            }
+        }
+        
+        // Check for attacks along diagonals (bishop and queen)
+        int[][] diagonalDirections = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}}; // Down-right, down-left, up-left, up-right
         for (int[] dir : diagonalDirections) {
             for (int i = 1; i < BOARD_SIZE; i++) {
                 int newRow = targetRow + i * dir[0];
@@ -436,17 +284,8 @@ public class ChessBoard implements Serializable {
                 if (piece != null) {
                     if (piece.getColor() == opponentColor) {
                         ChessPiece.PieceType type = piece.getType();
-                        if (i == 1) {
-                            if (type == ChessPiece.PieceType.KING) {
-                                return true; // Opponent's king is in diagonal
-                            }
-                            // Pawn threat - for white king from below diagonals, for black king from above diagonals
-                            if (type == ChessPiece.PieceType.PAWN) {
-                                if ((kingColor == ChessPiece.PieceColor.WHITE && dir[0] > 0) ||
-                                    (kingColor == ChessPiece.PieceColor.BLACK && dir[0] < 0)) {
-                                    return true; // Pawn threat
-                                }
-                            }
+                        if (i == 1 && type == ChessPiece.PieceType.KING) {
+                            return true; // Opponent's king is in diagonal
                         }
                         if (type == ChessPiece.PieceType.BISHOP || type == ChessPiece.PieceType.QUEEN) {
                             return true; // Threatened by bishop or queen
@@ -457,7 +296,7 @@ public class ChessBoard implements Serializable {
             }
         }
         
-        // At threat check
+        // Knight threat check
         int[][] knightMoves = {
             {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2},
             {1, -2}, {1, 2}, {2, -1}, {2, 1}
@@ -471,12 +310,42 @@ public class ChessBoard implements Serializable {
                 ChessPiece piece = board[newRow][newCol];
                 if (piece != null && piece.getColor() == opponentColor && 
                     piece.getType() == ChessPiece.PieceType.KNIGHT) {
-                    return true; // At threat
+                    return true; // Knight threat
                 }
             }
         }
         
         return false; // Square not threatened
+    }
+    
+    /**
+     * Checks if the king of the specified color is in check.
+     * 
+     * @param kingColor The color of the king
+     * @return True if the king is in check, false otherwise
+     */
+    public boolean isInCheck(ChessPiece.PieceColor kingColor) {
+        // Find the king's position
+        int kingRow = -1, kingCol = -1;
+        
+        for (int row = 0; row < BOARD_SIZE; row++) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                ChessPiece piece = board[row][col];
+                if (piece != null && 
+                    piece.getType() == ChessPiece.PieceType.KING && 
+                    piece.getColor() == kingColor) {
+                    kingRow = row;
+                    kingCol = col;
+                    break;
+                }
+            }
+            if (kingRow != -1) break;
+        }
+        
+        if (kingRow == -1) return false; // King not found
+        
+        // Check if king's position is under attack
+        return isSquareUnderAttack(kingRow, kingCol, kingColor);
     }
     
     private boolean canCastle(int row, int col, boolean kingSide, ChessPiece.PieceColor color) {
@@ -855,5 +724,222 @@ public class ChessBoard implements Serializable {
         }
         
         return sb.toString();
+    }
+    
+    /**
+     * Calculates all valid moves for the specified piece.
+     *
+     * @param row The row position of the piece
+     * @param col The column position of the piece
+     * @param piece The piece object
+     * @return A list of all valid squares the piece can move to
+     */
+    private List<Point> calculatePieceMoves(int row, int col, ChessPiece piece) {
+        List<Point> moves = new ArrayList<>();
+        
+        switch (piece.getType()) {
+            case PAWN:
+                calculatePawnMoves(row, col, piece, moves);
+                break;
+            case ROOK:
+                calculateStraightMoves(row, col, piece, true, false, moves);
+                break;
+            case KNIGHT:
+                calculateKnightMoves(row, col, piece, moves);
+                break;
+            case BISHOP:
+                calculateStraightMoves(row, col, piece, false, true, moves);
+                break;
+            case QUEEN:
+                calculateStraightMoves(row, col, piece, true, true, moves);
+                break;
+            case KING:
+                calculateKingMoves(row, col, piece, moves);
+                break;
+        }
+        
+        return moves;
+    }
+    
+    /**
+     * Calculates possible moves for a pawn.
+     * 
+     * @param row Row position of the pawn
+     * @param col Column position of the pawn
+     * @param piece Pawn object
+     * @param moves List of moves to add to
+     */
+    private void calculatePawnMoves(int row, int col, ChessPiece piece, List<Point> moves) {
+        int direction = (piece.getColor() == ChessPiece.PieceColor.WHITE) ? -1 : 1;
+        
+        // Forward movement
+        if (isValidPosition(row + direction, col) && board[row + direction][col] == null) {
+            moves.add(new Point(row + direction, col));
+            
+            // Can move two squares on first move
+            if (!piece.hasMoved() && 
+                isValidPosition(row + 2 * direction, col) && 
+                board[row + 2 * direction][col] == null) {
+                moves.add(new Point(row + 2 * direction, col));
+            }
+        }
+        
+        // Diagonal capture moves
+        for (int offset : new int[]{-1, 1}) {
+            if (isValidPosition(row + direction, col + offset)) {
+                ChessPiece targetPiece = board[row + direction][col + offset];
+                if (targetPiece != null && targetPiece.getColor() != piece.getColor()) {
+                    moves.add(new Point(row + direction, col + offset));
+                } 
+                // En passant check
+                else if (targetPiece == null && lastMoveWasDoublePawnPush) {
+                    // If there's a pawn in the adjacent square that just moved two squares
+                    if (row == lastPawnMoveRow && col + offset == lastPawnMoveCol) {
+                        ChessPiece pawnToCapture = board[row][col + offset];
+                        if (pawnToCapture != null && 
+                            pawnToCapture.getType() == ChessPiece.PieceType.PAWN && 
+                            pawnToCapture.getColor() != piece.getColor()) {
+                            moves.add(new Point(row + direction, col + offset));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Calculates straight and diagonal movements for rook, bishop, and queen.
+     * 
+     * @param row Row position of the piece
+     * @param col Column position of the piece
+     * @param piece Piece object
+     * @param straightLines Check straight movements
+     * @param diagonalLines Check diagonal movements
+     * @param moves List of moves to add to
+     */
+    private void calculateStraightMoves(int row, int col, ChessPiece piece, 
+                                     boolean straightLines, boolean diagonalLines, List<Point> moves) {
+        // Straight movements (horizontal and vertical)
+        if (straightLines) {
+            int[][] directions = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}}; // Right, down, left, up
+            
+            for (int[] dir : directions) {
+                for (int i = 1; i < BOARD_SIZE; i++) {
+                    int newRow = row + i * dir[0];
+                    int newCol = col + i * dir[1];
+                    
+                    if (!isValidPosition(newRow, newCol)) {
+                        break;
+                    }
+                    
+                    ChessPiece targetPiece = board[newRow][newCol];
+                    if (targetPiece == null) {
+                        moves.add(new Point(newRow, newCol));
+                    } else {
+                        if (targetPiece.getColor() != piece.getColor()) {
+                            moves.add(new Point(newRow, newCol));
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Diagonal movements
+        if (diagonalLines) {
+            int[][] directions = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}}; // Down-right, down-left, up-left, up-right
+            
+            for (int[] dir : directions) {
+                for (int i = 1; i < BOARD_SIZE; i++) {
+                    int newRow = row + i * dir[0];
+                    int newCol = col + i * dir[1];
+                    
+                    if (!isValidPosition(newRow, newCol)) {
+                        break;
+                    }
+                    
+                    ChessPiece targetPiece = board[newRow][newCol];
+                    if (targetPiece == null) {
+                        moves.add(new Point(newRow, newCol));
+                    } else {
+                        if (targetPiece.getColor() != piece.getColor()) {
+                            moves.add(new Point(newRow, newCol));
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Calculates possible moves for a knight.
+     * 
+     * @param row Row position of the knight
+     * @param col Column position of the knight
+     * @param piece Knight object
+     * @param moves List of moves to add to
+     */
+    private void calculateKnightMoves(int row, int col, ChessPiece piece, List<Point> moves) {
+        int[][] knightMoves = {
+            {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2},
+            {1, -2}, {1, 2}, {2, -1}, {2, 1}
+        };
+        
+        for (int[] move : knightMoves) {
+            int newRow = row + move[0];
+            int newCol = col + move[1];
+            
+            if (isValidPosition(newRow, newCol)) {
+                ChessPiece targetPiece = board[newRow][newCol];
+                if (targetPiece == null || targetPiece.getColor() != piece.getColor()) {
+                    moves.add(new Point(newRow, newCol));
+                }
+            }
+        }
+    }
+    
+    /**
+     * Calculates possible moves for a king.
+     * 
+     * @param row Row position of the king
+     * @param col Column position of the king
+     * @param piece King object
+     * @param moves List of moves to add to
+     */
+    private void calculateKingMoves(int row, int col, ChessPiece piece, List<Point> moves) {
+        int[][] kingMoves = {
+            {-1, -1}, {-1, 0}, {-1, 1},
+            {0, -1},           {0, 1},
+            {1, -1},  {1, 0},  {1, 1}
+        };
+        
+        for (int[] move : kingMoves) {
+            int newRow = row + move[0];
+            int newCol = col + move[1];
+            
+            if (isValidPosition(newRow, newCol)) {
+                ChessPiece targetPiece = board[newRow][newCol];
+                if (targetPiece == null || targetPiece.getColor() != piece.getColor()) {
+                    // The king cannot move to a square that is under attack
+                    if (!isSquareUnderAttack(newRow, newCol, piece.getColor())) {
+                        moves.add(new Point(newRow, newCol));
+                    }
+                }
+            }
+        }
+        
+        // Check castling - ensure king is not in check and will not pass through check
+        if (!piece.hasMoved() && !isInCheck(piece.getColor())) {
+            // Kingside castling
+            if (canCastle(row, col, true, piece.getColor())) {
+                moves.add(new Point(row, col + 2));
+            }
+            
+            // Queenside castling
+            if (canCastle(row, col, false, piece.getColor())) {
+                moves.add(new Point(row, col - 2));
+            }
+        }
     }
 } 
