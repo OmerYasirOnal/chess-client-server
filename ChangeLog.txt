@@ -1,0 +1,42 @@
+# Multiplayer Chess Application - Changelog
+
+## v1.0.0 - 2024-05-28
+* Initial release
+* Implemented basic chess rules
+* Completed client-server architecture
+* Designed user interface
+
+## Planned Enhancements (v1.1.0)
+
+### User Interface Improvements
+- [ ] Improve piece movement mechanism
+  - Current: Two-click selection and movement
+  - Target: Drag and drop support
+- [ ] Optimize board coordinate labels
+  - Current: Coordinate labels may obstruct piece visibility
+  - Target: More elegant and non-obstructive coordinate display
+
+### Game Mechanics Improvements
+- [ ] Add captured pieces display
+  - Current: Captured pieces are not displayed
+  - Target: Show each player's captured pieces in side panel
+- [ ] Add chess clock support
+  - Current: No time limits
+  - Target: Option to play with different time formats (blitz, rapid, classical)
+- [ ] Move history recording and display
+  - Current: Move history not recorded
+  - Target: Display move history in algebraic notation
+
+### Network Improvements
+- [ ] Resume game after connection loss
+- [ ] Optimizations for server load balancing
+- [ ] Player matchmaking system
+
+## Priority Order
+1. Display of captured pieces
+2. Drag and drop piece movement
+3. Move history recording and display
+4. Board size and coordinate label improvements
+5. Adding chess clock
+
+Note: These changes have not yet been implemented and will be added in future versions. 

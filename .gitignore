@@ -1,0 +1,66 @@
+# Maven build dosyaları
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# IDE dosyaları
+.idea/
+*.iml
+*.iws
+*.ipr
+.settings/
+.project
+.classpath
+.factorypath
+.vscode/
+
+# Log dosyaları
+*.log
+logs/
+
+# BlueJ dosyaları
+*.ctxt
+
+# Package Files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# JVM hata dökümü
+hs_err_pid*
+replay_pid*
+
+# MacOS dosyaları
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows dosyaları
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# Geçici dosyalar
+tmp/
+temp/
+
+# NOT: Taş resimleri kaynak kontrol sistemine dahil edilmelidir
+# src/main/resources/pieces/*.png olmamalı 
