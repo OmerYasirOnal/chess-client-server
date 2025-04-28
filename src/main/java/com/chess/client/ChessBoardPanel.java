@@ -493,7 +493,7 @@ public class ChessBoardPanel extends JPanel {
     
     // Şah çeken taşın konumunu bul
     private Point findCheckingPiece(ChessPiece.PieceColor kingColor) {
-        // Önce şahın yerini bul
+        // Şahın konumunu bul
         int kingRow = -1, kingCol = -1;
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0; col < BOARD_SIZE; col++) {
@@ -514,12 +514,8 @@ public class ChessBoardPanel extends JPanel {
         ChessPiece.PieceColor opponentColor = (kingColor == ChessPiece.PieceColor.WHITE) ? 
                 ChessPiece.PieceColor.BLACK : ChessPiece.PieceColor.WHITE;
         
-        // Düz hatlar (yatay, dikey)
+        // Düz hatlar boyunca saldırı (yatay, dikey - kale ve vezir)
         int[][] straightDirections = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-        // Çapraz hatlar
-        int[][] diagonalDirections = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
-        
-        // Düz hatlar üzerinde kale ve vezir kontrolü
         for (int[] dir : straightDirections) {
             for (int i = 1; i < BOARD_SIZE; i++) {
                 int newRow = kingRow + i * dir[0];
@@ -540,7 +536,8 @@ public class ChessBoardPanel extends JPanel {
             }
         }
         
-        // Çapraz hatlar üzerinde fil ve vezir kontrolü
+        // Çapraz hatlar boyunca saldırı (çapraz - fil, vezir ve piyon)
+        int[][] diagonalDirections = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
         for (int[] dir : diagonalDirections) {
             for (int i = 1; i < BOARD_SIZE; i++) {
                 int newRow = kingRow + i * dir[0];
@@ -553,9 +550,11 @@ public class ChessBoardPanel extends JPanel {
                     if (piece.getColor() == opponentColor) {
                         ChessPiece.PieceType type = piece.getType();
                         if (i == 1 && type == ChessPiece.PieceType.PAWN) {
-                            // Piyon tehdidi - beyaz şah için alt çaprazlarda, siyah şah için üst çaprazlarda
-                            if ((kingColor == ChessPiece.PieceColor.WHITE && dir[0] > 0) ||
-                                (kingColor == ChessPiece.PieceColor.BLACK && dir[0] < 0)) {
+                            // Piyon tehdidi - piyonlar sadece karşı yöne giderken şah çekebilir
+                            // Beyaz piyon aşağıdan yukarı (dir[0] < 0) şah çeker
+                            // Siyah piyon yukarıdan aşağı (dir[0] > 0) şah çeker
+                            if ((opponentColor == ChessPiece.PieceColor.WHITE && dir[0] < 0) ||
+                                (opponentColor == ChessPiece.PieceColor.BLACK && dir[0] > 0)) {
                                 return new Point(newRow, newCol);
                             }
                         }
@@ -587,7 +586,7 @@ public class ChessBoardPanel extends JPanel {
             }
         }
         
-        return null; // Şah çeken taş bulunamadı
+        return null; // Şah tehdidi bulunamadı
     }
     
     // Taşın korunup korunmadığını kontrol et
@@ -1080,10 +1079,12 @@ public class ChessBoardPanel extends JPanel {
                             if (type == ChessPiece.PieceType.KING) {
                                 return true; // Rakip şah çaprazda
                             }
-                            // Piyon tehdidi - beyaz şah için alt çaprazlarda, siyah şah için üst çaprazlarda
+                            // Piyon tehdidi - piyonlar sadece karşı yöne giderken şah çekebilir
                             if (type == ChessPiece.PieceType.PAWN) {
-                                if ((kingColor == ChessPiece.PieceColor.WHITE && dir[0] > 0) ||
-                                    (kingColor == ChessPiece.PieceColor.BLACK && dir[0] < 0)) {
+                                // Beyaz piyon aşağıdan yukarı (dir[0] < 0) şah çeker
+                                // Siyah piyon yukarıdan aşağı (dir[0] > 0) şah çeker
+                                if ((opponentColor == ChessPiece.PieceColor.WHITE && dir[0] < 0) ||
+                                    (opponentColor == ChessPiece.PieceColor.BLACK && dir[0] > 0)) {
                                     return true; // Piyon tehdidi
                                 }
                             }

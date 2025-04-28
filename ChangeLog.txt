@@ -1,11 +1,20 @@
 # Multiplayer Chess Application - Changelog
 
+## v1.2.0 - 2024-04-28
+* Fixed pawn check detection bug
+  - Corrected the calculation of pawn check threats
+  - Improved diagonal check detection for pawns
+  - Fixed bug where the king was not properly recognizing pawn checks
+* Code optimizations and performance improvements
+* Updated documentation
+* Version upgraded to 1.2.0
+
 ## v1.1.0 - 2024-05-29
-* Kod temizliği ve optimizasyon
-* Kullanıcı arayüzünde iyileştirmeler
-* Performans iyileştirmeleri
-* Belgelendirmeler güncellendi
-* Versiyon 1.1.0'a yükseltildi
+* Code cleanup and optimization
+* User interface improvements
+* Performance enhancements
+* Updated documentation
+* Version upgraded to 1.1.0
 
 ## v1.0.0 - 2024-05-28
 * Initial release
@@ -13,7 +22,7 @@
 * Completed client-server architecture
 * Designed user interface
 
-## Planned Enhancements (v1.2.0)
+## Planned Enhancements (v1.3.0)
 
 ### User Interface Improvements
 - [ ] Improve piece movement mechanism
