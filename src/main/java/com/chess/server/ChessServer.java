@@ -98,6 +98,18 @@ public class ChessServer {
             case CHAT:
                 handleChat(message, sender);
                 break;
+            case CREATE_GAME:
+                handleCreateGame(message, sender);
+                break;
+            case JOIN_GAME:
+                handleJoinGame(message, sender);
+                break;
+            case GAME_LIST:
+                handleGameList(sender);
+                break;
+            case DISCONNECT:
+                // Disconnect is handled by the removeClient method
+                break;
             default:
                 System.out.println("Unknown message type: " + message.getType());
         }
@@ -389,8 +401,10 @@ public class ChessServer {
     
     private static class GameSession {
         private final ClientHandler player1;
-        private final ClientHandler player2;
+        private ClientHandler player2;
         private final ChessBoard chessBoard;
+        private String sessionId;
+        private String timeControl;
         
         public GameSession(ClientHandler player1, ClientHandler player2) {
             this.player1 = player1;
@@ -404,6 +418,10 @@ public class ChessServer {
         
         public ClientHandler getPlayer2() {
             return player2;
+        }
+        
+        public void setPlayer2(ClientHandler player2) {
+            this.player2 = player2;
         }
         
         public ChessBoard getChessBoard() {
@@ -427,5 +445,145 @@ public class ChessServer {
             return player1.getPlayerInfo().isReady() && 
                    player2.getPlayerInfo().isReady();
         }
+        
+        public String getSessionId() {
+            return sessionId;
+        }
+        
+        public void setSessionId(String sessionId) {
+            this.sessionId = sessionId;
+        }
+        
+        public String getTimeControl() {
+            return timeControl;
+        }
+        
+        public void setTimeControl(String timeControl) {
+            this.timeControl = timeControl;
+        }
+    }
+    
+    // Mevcut oyunların listesini istemciye gönder
+    private void handleGameList(ClientHandler sender) {
+        List<Message.GameInfo> gameInfos = new ArrayList<>();
+        
+        // Henüz oyun içinde olmayan oyun oturumlarını bul
+        for (GameSession session : gameSessions) {
+            if (!session.isAllPlayersReady() && session.getPlayer2() == null) {
+                Message.GameInfo gameInfo = new Message.GameInfo(
+                        session.getSessionId(),
+                        session.getPlayer1().getUsername(),
+                        session.getTimeControl()
+                );
+                gameInfos.add(gameInfo);
+            }
+        }
+        
+        // Oyun listesini istemciye gönder
+        Message response = new Message(Message.MessageType.GAME_LIST_RESPONSE);
+        response.setGames(gameInfos);
+        sender.sendMessage(response);
+    }
+    
+    // Yeni oyun oluştur
+    private void handleCreateGame(Message message, ClientHandler sender) {
+        String gameId = message.getGameId();
+        String timeControl = message.getTimeControl();
+        
+        // Eğer kullanıcı zaten bir oyun içindeyse, önce o oyunu sonlandır
+        GameSession existingSession = findGameSessionByClient(sender);
+        if (existingSession != null) {
+            gameSessions.remove(existingSession);
+        }
+        
+        // Yeni oyun oturumu oluştur (sadece bir oyuncu ile)
+        GameSession gameSession = new GameSession(sender, null);
+        gameSession.setSessionId(gameId);
+        gameSession.setTimeControl(timeControl);
+        gameSessions.add(gameSession);
+        
+        // Oyuncu rengi atama
+        sender.setPlayerInfo(new PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.WHITE));
+        
+        // Oyun tahtasına oyuncu adlarını atama
+        ChessBoard board = gameSession.getChessBoard();
+        board.setWhitePlayerName(sender.getUsername());
+        
+        // Oyuncuya bilgi mesajı gönder
+        Message confirmMessage = new Message(Message.MessageType.GAME_START);
+        confirmMessage.setContent("Waiting for an opponent to join your game.");
+        
+        // PlayerInfo mesajı oluştur
+        Message.PlayerInfo messagePlayerInfo = new Message.PlayerInfo(
+                sender.getUsername(), 
+                sender.getPlayerInfo().getColor()
+        );
+        confirmMessage.setPlayerInfo(messagePlayerInfo);
+        
+        sender.sendMessage(confirmMessage);
+        
+        System.out.println("New game created by: " + sender.getUsername() + ", ID: " + gameId);
+    }
+    
+    // Var olan bir oyuna katıl
+    private void handleJoinGame(Message message, ClientHandler sender) {
+        String gameId = message.getGameId();
+        
+        // Oyun ID'sine göre oyun oturumunu bul
+        GameSession gameSession = findGameSessionById(gameId);
+        
+        if (gameSession != null && gameSession.getPlayer2() == null) {
+            // İkinci oyuncuyu ekle
+            gameSession.setPlayer2(sender);
+            
+            // Oyuncu rengi atama
+            sender.setPlayerInfo(new PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.BLACK));
+            
+            // Oyun tahtasına oyuncu adlarını atama
+            ChessBoard board = gameSession.getChessBoard();
+            board.setBlackPlayerName(sender.getUsername());
+            
+            ClientHandler player1 = gameSession.getPlayer1();
+            
+            // Her iki oyuncuya da oyunun başladığını bildir
+            Message message1 = new Message(Message.MessageType.GAME_START);
+            message1.setContent("Your opponent: " + sender.getUsername() + ". Your color: White");
+            
+            Message.PlayerInfo messagePlayerInfo1 = new Message.PlayerInfo(
+                    player1.getUsername(), 
+                    player1.getPlayerInfo().getColor()
+            );
+            message1.setPlayerInfo(messagePlayerInfo1);
+            
+            player1.sendMessage(message1);
+            
+            Message message2 = new Message(Message.MessageType.GAME_START);
+            message2.setContent("Your opponent: " + player1.getUsername() + ". Your color: Black");
+            
+            Message.PlayerInfo messagePlayerInfo2 = new Message.PlayerInfo(
+                    sender.getUsername(), 
+                    sender.getPlayerInfo().getColor()
+            );
+            message2.setPlayerInfo(messagePlayerInfo2);
+            
+            sender.sendMessage(message2);
+            
+            System.out.println("Player joined game: " + sender.getUsername() + " joined " + player1.getUsername() + "'s game");
+        } else {
+            // Oyun bulunamadı veya dolu
+            Message errorMessage = new Message(Message.MessageType.CONNECT);
+            errorMessage.setContent("Game not found or already full.");
+            sender.sendMessage(errorMessage);
+        }
+    }
+    
+    // Oyun ID'sine göre oyun oturumunu bul
+    private GameSession findGameSessionById(String gameId) {
+        for (GameSession session : gameSessions) {
+            if (session.getSessionId() != null && session.getSessionId().equals(gameId)) {
+                return session;
+            }
+        }
+        return null;
     }
 } 

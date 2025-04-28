@@ -108,13 +108,11 @@ public class ChessClientSwing {
         contentPanel.add(lobbyPanel, "lobby");
         cardLayout.show(contentPanel, "lobby");
         
-        // Sample games for testing
-        List<com.chess.client.LobbyPanel.GameInfo> testGames = new ArrayList<>();
-        testGames.add(new com.chess.client.LobbyPanel.GameInfo("1", "Player1", "5+0"));
-        testGames.add(new com.chess.client.LobbyPanel.GameInfo("2", "Player2", "10+0"));
-        testGames.add(new com.chess.client.LobbyPanel.GameInfo("3", "GrandMaster", "30+0"));
-        
-        lobbyPanel.updateGameList(testGames);
+        // Oyun listesini sunucudan iste
+        if (client != null && client.isConnected()) {
+            Message gameListRequest = new Message(Message.MessageType.GAME_LIST);
+            client.sendMessage(gameListRequest);
+        }
     }
     
     private void showCreateGamePanel() {

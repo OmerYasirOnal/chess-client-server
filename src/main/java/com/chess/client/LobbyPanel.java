@@ -181,14 +181,14 @@ public class LobbyPanel extends JPanel {
     }
     
     private void refreshGameList() {
-        // In a real application, this method should get the game list from the server
-        statusLabel.setText("Refreshing game list...");
+        // Sunucudan oyun listesini iste
+        statusLabel.setText("Oyun listesi yenileniyor...");
         
-        // Sample data for testing
+        // Listeyi temizle
         gameListModel.clear();
         availableGames.clear();
         
-        // Get game list from server
+        // Sunucudan oyun listesini iste
         requestGameList();
     }
     
@@ -196,6 +196,8 @@ public class LobbyPanel extends JPanel {
         if (client != null && client.isConnected()) {
             Message requestMessage = new Message(Message.MessageType.GAME_LIST);
             client.sendMessage(requestMessage);
+        } else {
+            statusLabel.setText("Sunucuya bağlantı yok! Önce giriş yapın.");
         }
     }
     

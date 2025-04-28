@@ -1,35 +1,35 @@
 # Chess Game v1.1.0 Release Notes
 
-Bu sürüm, satranç oyun projemizin ilk kararlı sürümü olan 1.0.0'dan sonraki ilk güncellemedir.
+This is the first update after the first stable version of our chess game project, 1.0.0.
 
-## Yenilikler ve İyileştirmeler
+## New Features and Improvements
 
-* **Kod Temizliği**: Tüm kod tabanında genel temizlik ve optimizasyon yapıldı
-* **Kullanıcı Arayüzü İyileştirmeleri**: Arayüz bileşenlerinde düzenlemeler yapıldı
-* **Performans İyileştirmeleri**: Oyun motoru ve ağ iletişimi hızlandırıldı
-* **Belgelendirme Güncellemeleri**: README ve ChangeLog dosyaları güncel bilgilerle güncellendi
+* **Code Cleanup**: General cleanup and refactoring of all code
+* **User Interface Improvements**: Edits were made to the UI
+* **Performance Improvements**: Game engine and networking were sped up
+* **Documentation Updates**: README and ChangeLog files were updated with up-to-date information
 
-## Yükleme Talimatları
+## Installation Instructions
 
-### Sunucu
-```bash
+### Server
+``` bash
 java -jar chess-server-1.1.0.jar [port]
-```
-Varsayılan port belirtilmezse 5000'dir.
+''''
+Default port is 5000 if not specified.
 
-### İstemci
-```bash
-java -jar chess-client-1.1.0.jar [server-address] [port]
-```
-Varsayılan sunucu adresi localhost ve varsayılan port 5000'dir.
+### Client
+``` bash
+java -jar chess-client-1.1.0.jar [server address] [port]
+''''
+The default server address is localhost and the default port is 5000.
 
-## Gelecek Sürüm Planları
+## Future Release Plans
 
-1.2.0 sürümünde aşağıdaki özelliklerin eklenmesi planlanmaktadır:
-- Alınan taşların gösterilmesi
-- Sürükle-bırak taş hareketi
-- Hamle geçmişi kaydı ve gösterimi
-- Tahta boyutu ve koordinat etiketi iyileştirmeleri
-- Satranç saati eklentisi
+The following features are planned to be integrated in version 1.2.0:
+- Name of captured pieces
+- Drag-and-drop footwork
+- Transfer and display of move history
+- Board size and coordinate label ratios
+- Chess clock plugin
 
-Detaylı bilgi için ChangeLog.txt dosyasına bakabilirsiniz. 
+For detailed information see ChangeLog.txt.
