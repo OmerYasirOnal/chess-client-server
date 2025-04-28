@@ -1,207 +1,216 @@
 package com.chess.client;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 
 public class LoginPanel extends JPanel {
+    private static final long serialVersionUID = 1L;
+    
     private JTextField usernameField;
     private JTextField serverField;
     private JTextField portField;
-    private JButton connectButton;
-    private JLabel statusLabel;
+    private JLabel errorLabel;
+    private JButton loginButton;
     
-    private final MainFrame mainFrame;
+    private LoginListener loginListener;
     
-    public LoginPanel(MainFrame parent) {
-        this.mainFrame = parent;
-        
-        // Panel layout
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
-        // Create components
-        createHeaderPanel();
-        createFormPanel();
-        createFooterPanel();
-        
-        // Default values for testing
-        usernameField.setText("Player1");
-        serverField.setText("localhost");
-        portField.setText("8888");
+    public LoginPanel() {
+        setLayout(new BorderLayout());
+        initializeUI();
     }
     
-    private void createHeaderPanel() {
+    private void initializeUI() {
+        // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(new Color(240, 240, 240));
+        headerPanel.setBackground(new Color(40, 40, 40));
+        headerPanel.setPreferredSize(new Dimension(800, 80));
         
-        JLabel titleLabel = new JLabel("Chess Game");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 28));
-        titleLabel.setHorizontalAlignment(JLabel.CENTER);
+        JLabel titleLabel = new JLabel("Chess Game", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 32));
+        titleLabel.setForeground(Color.WHITE);
         headerPanel.add(titleLabel, BorderLayout.CENTER);
         
-        JLabel subtitleLabel = new JLabel("Multiplayer Online Chess");
-        subtitleLabel.setFont(new Font("Arial", Font.ITALIC, 14));
-        subtitleLabel.setHorizontalAlignment(JLabel.CENTER);
-        headerPanel.add(subtitleLabel, BorderLayout.SOUTH);
-        
         add(headerPanel, BorderLayout.NORTH);
-    }
-    
-    private void createFormPanel() {
-        // Panel düzeni
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
-        formPanel.setBorder(new EmptyBorder(50, 100, 50, 100));
+        
+        // Login form
+        JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(new Color(240, 240, 240));
         
-        // Kullanıcı adı alanı
-        JPanel usernamePanel = createFieldPanel("Username:");
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        
+        // Username
+        JLabel usernameLabel = new JLabel("Username:");
+        usernameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        formPanel.add(usernameLabel, gbc);
+        
         usernameField = new JTextField(20);
-        usernameField.setMaximumSize(new Dimension(300, 30));
-        usernamePanel.add(usernameField);
+        usernameField.setFont(new Font("Arial", Font.PLAIN, 14));
+        usernameField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200)), 
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        formPanel.add(usernameField, gbc);
         
-        // Sunucu alanı
-        JPanel serverPanel = createFieldPanel("Server Address:");
-        serverField = new JTextField("localhost", 20);
-        serverField.setMaximumSize(new Dimension(300, 30));
-        serverPanel.add(serverField);
+        // Server address
+        JLabel serverLabel = new JLabel("Server Address:");
+        serverLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        formPanel.add(serverLabel, gbc);
         
-        // Port alanı
-        JPanel portPanel = createFieldPanel("Port:");
-        portField = new JTextField("8888", 5);
-        portField.setMaximumSize(new Dimension(100, 30));
-        portPanel.add(portField);
+        serverField = new JTextField("141.147.25.123", 20);
+        serverField.setFont(new Font("Arial", Font.PLAIN, 14));
+        serverField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200)), 
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        formPanel.add(serverField, gbc);
         
-        // Durum etiketi
-        statusLabel = new JLabel(" ");
-        statusLabel.setForeground(Color.RED);
-        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // Port
+        JLabel portLabel = new JLabel("Port:");
+        portLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        formPanel.add(portLabel, gbc);
         
-        // Bağlan butonu
-        connectButton = new JButton("Connect to Game");
-        connectButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        connectButton.setMaximumSize(new Dimension(200, 40));
-        connectButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        portField = new JTextField("9999", 20);
+        portField.setFont(new Font("Arial", Font.PLAIN, 14));
+        portField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200)), 
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        formPanel.add(portField, gbc);
         
-        connectButton.addActionListener(new ActionListener() {
+        // Error message
+        errorLabel = new JLabel("");
+        errorLabel.setForeground(Color.RED);
+        errorLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        formPanel.add(errorLabel, gbc);
+        
+        // Login button
+        loginButton = new JButton("Login");
+        loginButton.setFont(new Font("Arial", Font.BOLD, 14));
+        loginButton.setBackground(new Color(70, 130, 180));
+        loginButton.setForeground(Color.WHITE);
+        loginButton.setFocusPainted(false);
+        loginButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.CENTER;
+        formPanel.add(loginButton, gbc);
+        
+        // Login button function
+        loginButton.addActionListener(this::handleLogin);
+        
+        // Enter key function
+        usernameField.addKeyListener(new KeyAdapter() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                connectToGame();
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    handleLogin(null);
+                }
             }
         });
         
-        // Form paneline elemanları ekle
-        formPanel.add(Box.createVerticalGlue());
-        formPanel.add(usernamePanel);
-        formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        formPanel.add(serverPanel);
-        formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        formPanel.add(portPanel);
-        formPanel.add(Box.createRigidArea(new Dimension(0, 30)));
-        formPanel.add(statusLabel);
-        formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        formPanel.add(connectButton);
-        formPanel.add(Box.createVerticalGlue());
+        serverField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    handleLogin(null);
+                }
+            }
+        });
+        
+        portField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    handleLogin(null);
+                }
+            }
+        });
         
         add(formPanel, BorderLayout.CENTER);
-    }
-    
-    private void createFooterPanel() {
-        // Alt bilgi paneli
-        JPanel footerPanel = new JPanel(new BorderLayout());
-        footerPanel.setBackground(new Color(200, 200, 200));
-        footerPanel.setPreferredSize(new Dimension(800, 40));
         
-        JLabel versionLabel = new JLabel("v1.0 - Network Project");
-        versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        footerPanel.add(versionLabel, BorderLayout.CENTER);
+        // Footer
+        JPanel footerPanel = new JPanel(new BorderLayout());
+        footerPanel.setBackground(new Color(40, 40, 40));
+        footerPanel.setPreferredSize(new Dimension(800, 30));
+        
+        JLabel footerLabel = new JLabel("© 2025 Chess Game - Computer Networks Project", SwingConstants.CENTER);
+        footerLabel.setForeground(new Color(200, 200, 200));
+        footerLabel.setFont(new Font("Arial", Font.PLAIN, 10));
+        footerPanel.add(footerLabel, BorderLayout.CENTER);
         
         add(footerPanel, BorderLayout.SOUTH);
     }
     
-    private JPanel createFieldPanel(String labelText) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-        panel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.setBackground(new Color(240, 240, 240));
-        
-        JLabel label = new JLabel(labelText);
-        label.setPreferredSize(new Dimension(120, 30));
-        panel.add(label);
-        panel.add(Box.createRigidArea(new Dimension(10, 0)));
-        
-        return panel;
-    }
-    
-    private void connectToGame() {
+    private void handleLogin(ActionEvent e) {
         String username = usernameField.getText().trim();
         String server = serverField.getText().trim();
         String portText = portField.getText().trim();
         
         // Validation
         if (username.isEmpty()) {
-            statusLabel.setText("Please enter a username.");
+            errorLabel.setText("Please enter a username!");
             return;
         }
         
         if (server.isEmpty()) {
-            statusLabel.setText("Please enter a server address.");
+            errorLabel.setText("Please enter a server address!");
             return;
         }
         
         int port;
         try {
             port = Integer.parseInt(portText);
-            if (port < 1 || port > 65535) {
-                statusLabel.setText("Port must be between 1-65535.");
-                return;
-            }
-        } catch (NumberFormatException e) {
-            statusLabel.setText("Please enter a valid port number.");
+        } catch (NumberFormatException ex) {
+            errorLabel.setText("Please enter a valid port number!");
             return;
         }
         
-        // Connection attempt
-        connectButton.setEnabled(false);
-        statusLabel.setText("Connecting...");
-        
-        SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
-            
-            @Override
-            protected Boolean doInBackground() throws Exception {
-                try {
-                    ChessClient client = new ChessClient(server, port, username);
-                    client.connect();
-                    mainFrame.startGame(client);
-                    return true;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return false;
-                }
-            }
-            
-            @Override
-            protected void done() {
-                try {
-                    boolean success = get();
-                    
-                    if (!success) {
-                        connectButton.setEnabled(true);
-                        statusLabel.setText("Connection failed. Please try again.");
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    connectButton.setEnabled(true);
-                    statusLabel.setText("Connection error: " + e.getMessage());
-                }
-            }
-        };
-        
-        worker.execute();
+        // Notify login listener
+        if (loginListener != null) {
+            loginListener.onLogin(username, server, port);
+        }
+    }
+    
+    public void setLoginListener(LoginListener listener) {
+        this.loginListener = listener;
+    }
+    
+    public void setErrorMessage(String message) {
+        errorLabel.setText(message);
+    }
+    
+    // Interface for login process
+    public interface LoginListener {
+        void onLogin(String username, String server, int port);
     }
 } 

@@ -29,19 +29,19 @@ public class ChessServer {
     
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Satranç sunucusu " + PORT + " portu üzerinde başlatıldı...");
-            System.out.println("Bağlantı bekleniyor...");
+            System.out.println("Chess server started on port " + PORT + "...");
+            System.out.println("Waiting for connections...");
             
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Yeni bir bağlantı kabul edildi: " + clientSocket.getInetAddress().getHostAddress());
+                System.out.println("New connection accepted: " + clientSocket.getInetAddress().getHostAddress());
                 
                 ClientHandler clientHandler = new ClientHandler(clientSocket, this);
                 clients.add(clientHandler);
                 pool.execute(clientHandler);
             }
         } catch (IOException e) {
-            System.err.println("Sunucu başlatılırken hata oluştu: " + e.getMessage());
+            System.err.println("Error starting server: " + e.getMessage());
             e.printStackTrace();
         } finally {
             pool.shutdown();
@@ -58,20 +58,20 @@ public class ChessServer {
     
     public void removeClient(ClientHandler client) {
         clients.remove(client);
-        System.out.println("İstemci ayrıldı. Aktif bağlantı sayısı: " + clients.size());
+        System.out.println("Client disconnected. Active connections: " + clients.size());
         
-        // İstemcinin oyun oturumunu kontrol et
+        // Check client's game session
         GameSession gameSession = findGameSessionByClient(client);
         if (gameSession != null) {
             Message disconnectMessage = new Message(Message.MessageType.DISCONNECT);
-            disconnectMessage.setContent(client.getUsername() + " oyundan ayrıldı.");
+            disconnectMessage.setContent(client.getUsername() + " left the game.");
             broadcast(disconnectMessage, null);
             
-            // Eğer oyun devam ediyorsa, diğer oyuncuya kazandığını bildir
+            // If the game is still in progress, notify the other player about the win
             if (!gameSession.getChessBoard().isGameOver()) {
                 ClientHandler opponent = gameSession.getOpponent(client);
                 if (opponent != null) {
-                    gameSession.getChessBoard().setGameResult(opponent.getUsername() + " kazandı. (Rakip ayrıldı)");
+                    gameSession.getChessBoard().setGameResult(opponent.getUsername() + " won. (Opponent left)");
                     
                     Message gameEndMessage = new Message(Message.MessageType.GAME_END);
                     gameEndMessage.setContent(gameSession.getChessBoard().getGameResult());
@@ -79,7 +79,7 @@ public class ChessServer {
                 }
             }
             
-            // Oturumu kaldır
+            // Remove session
             gameSessions.remove(gameSession);
         }
     }
@@ -99,7 +99,7 @@ public class ChessServer {
                 handleChat(message, sender);
                 break;
             default:
-                System.out.println("Bilinmeyen mesaj tipi: " + message.getType());
+                System.out.println("Unknown message type: " + message.getType());
         }
     }
     
@@ -107,11 +107,11 @@ public class ChessServer {
         String username = message.getContent();
         sender.setUsername(username);
         
-        // Kullanıcı adını ayarla
+        // Set username
         PlayerInfo playerInfo = new PlayerInfo(username);
         sender.setPlayerInfo(playerInfo);
         
-        // Eğer bekleyen bir oyuncu varsa, eşleştir
+        // If there's a waiting player, match them
         if (clients.size() >= 2) {
             boolean matched = false;
             for (ClientHandler client : clients) {
@@ -124,21 +124,21 @@ public class ChessServer {
             
             if (!matched) {
                 Message waitingMessage = new Message(Message.MessageType.CONNECT);
-                waitingMessage.setContent("Eşleşme bekleniyor...");
+                waitingMessage.setContent("Waiting for a match...");
                 sender.sendMessage(waitingMessage);
             }
         } else {
             Message waitingMessage = new Message(Message.MessageType.CONNECT);
-            waitingMessage.setContent("Rakip bekleniyor...");
+            waitingMessage.setContent("Waiting for an opponent...");
             sender.sendMessage(waitingMessage);
         }
         
-        // Diğer kullanıcılara bildir
+        // Notify other users
         Message broadcastMessage = new Message(Message.MessageType.CONNECT);
-        broadcastMessage.setContent(username + " bağlandı.");
+        broadcastMessage.setContent(username + " connected.");
         broadcast(broadcastMessage, sender);
         
-        System.out.println(username + " bağlandı. Aktif bağlantı sayısı: " + clients.size());
+        System.out.println(username + " connected. Active connections: " + clients.size());
     }
     
     private void handleReady(Message message, ClientHandler sender) {
@@ -146,15 +146,15 @@ public class ChessServer {
         if (gameSession != null) {
             sender.getPlayerInfo().setReady(true);
             
-            // Diğer oyuncuya bildir
+            // Notify the other player
             Message readyMessage = new Message(Message.MessageType.READY);
-            readyMessage.setContent(sender.getUsername() + " hazır.");
+            readyMessage.setContent(sender.getUsername() + " is ready.");
             ClientHandler opponent = gameSession.getOpponent(sender);
             if (opponent != null) {
                 opponent.sendMessage(readyMessage);
             }
             
-            // İki oyuncu da hazırsa oyunu başlat
+            // If both players are ready, start the game
             if (gameSession.isAllPlayersReady()) {
                 startGame(gameSession);
             }
@@ -167,12 +167,15 @@ public class ChessServer {
             ChessBoard board = gameSession.getChessBoard();
             ChessMove move = message.getMove();
             
-            // Hamlenin geçerli olup olmadığını kontrol et
+            // Check if the move is valid
             if (move != null && isValidMove(move, board, sender)) {
-                // Hamleyi yap
+                // Make the move
                 board.makeMove(move);
                 
-                // Diğer oyuncuya hamleyi bildir
+                // Update game state
+                board.updateGameState();
+                
+                // Notify the other player about the move
                 Message moveMessage = new Message(Message.MessageType.MOVE);
                 moveMessage.setMove(move);
                 moveMessage.setSender(sender.getUsername());
@@ -182,19 +185,19 @@ public class ChessServer {
                     opponent.sendMessage(moveMessage);
                 }
                 
-                // Oyun bitti mi kontrolü
+                // Check if the game has ended
                 checkGameEnd(gameSession);
             } else {
-                // Geçersiz hamle bildirimi
+                // Invalid move notification
                 Message invalidMoveMessage = new Message(Message.MessageType.MOVE);
-                invalidMoveMessage.setContent("Geçersiz hamle!");
+                invalidMoveMessage.setContent("Invalid move!");
                 sender.sendMessage(invalidMoveMessage);
             }
         }
     }
     
     private void handleChat(Message message, ClientHandler sender) {
-        // Sadece aynı oyun oturumundaki oyunculara ilet
+        // Only send to players in the same game session
         GameSession gameSession = findGameSessionByClient(sender);
         if (gameSession != null) {
             ClientHandler opponent = gameSession.getOpponent(sender);
@@ -206,73 +209,106 @@ public class ChessServer {
     }
     
     private void createGameSession(ClientHandler player1, ClientHandler player2) {
-        // Yeni bir oyun oturumu oluştur
+        // Create a new game session
         GameSession gameSession = new GameSession(player1, player2);
         gameSessions.add(gameSession);
         
-        // Oyunculara renk ata
+        // Assign colors to players
         player1.setPlayerInfo(new PlayerInfo(player1.getUsername(), ChessPiece.PieceColor.WHITE));
         player2.setPlayerInfo(new PlayerInfo(player2.getUsername(), ChessPiece.PieceColor.BLACK));
         
-        // Oyunculara eşleşmeyi bildir
+        // Assign player names to ChessBoard
+        ChessBoard board = gameSession.getChessBoard();
+        board.setWhitePlayerName(player1.getUsername());
+        board.setBlackPlayerName(player2.getUsername());
+        
+        // Notify players about the match
         Message matchMessage1 = new Message(Message.MessageType.GAME_START);
-        matchMessage1.setContent("Rakibiniz: " + player2.getUsername() + ". Renginiz: Beyaz");
-        matchMessage1.setPlayerInfo(player1.getPlayerInfo());
+        matchMessage1.setContent("Your opponent: " + player2.getUsername() + ". Your color: White");
+        
+        // Create a Message.PlayerInfo from PlayerInfo
+        Message.PlayerInfo messagePlayerInfo1 = new Message.PlayerInfo(player1.getUsername(), player1.getPlayerInfo().getColor());
+        matchMessage1.setPlayerInfo(messagePlayerInfo1);
+        
         player1.sendMessage(matchMessage1);
         
         Message matchMessage2 = new Message(Message.MessageType.GAME_START);
-        matchMessage2.setContent("Rakibiniz: " + player1.getUsername() + ". Renginiz: Siyah");
-        matchMessage2.setPlayerInfo(player2.getPlayerInfo());
+        matchMessage2.setContent("Your opponent: " + player1.getUsername() + ". Your color: Black");
+        
+        // Create a Message.PlayerInfo from PlayerInfo
+        Message.PlayerInfo messagePlayerInfo2 = new Message.PlayerInfo(player2.getUsername(), player2.getPlayerInfo().getColor());
+        matchMessage2.setPlayerInfo(messagePlayerInfo2);
+        
         player2.sendMessage(matchMessage2);
         
-        System.out.println("Yeni bir oyun başlatıldı: " + player1.getUsername() + " vs " + player2.getUsername());
+        System.out.println("New game started: " + player1.getUsername() + " vs " + player2.getUsername());
     }
     
     private void startGame(GameSession gameSession) {
-        // Oyun tahtasını başlat
+        // Initialize the game board
         ChessBoard board = gameSession.getChessBoard();
         
-        // İlk hamle sırasını beyaz taşlara ver
+        // Set the first move to white pieces
         board.setCurrentTurn(ChessPiece.PieceColor.WHITE);
         
-        // Oyunculara oyunun başladığını bildir
+        // Notify players that the game has started
         Message gameStartMessage = new Message(Message.MessageType.GAME_START);
-        gameStartMessage.setContent("Oyun başladı! Hamle sırası: Beyaz");
+        gameStartMessage.setContent("Game started! Turn: White");
         
         gameSession.getPlayer1().sendMessage(gameStartMessage);
         gameSession.getPlayer2().sendMessage(gameStartMessage);
-        
-        System.out.println("Oyun başladı: " + gameSession.getPlayer1().getUsername() + " vs " + gameSession.getPlayer2().getUsername());
     }
     
     private boolean isValidMove(ChessMove move, ChessBoard board, ClientHandler player) {
-        // Geçerli sıra kontrolü
-        if (board.getCurrentTurn() != player.getPlayerInfo().getColor()) {
+        // Check if it's the player's turn
+        ChessPiece.PieceColor playerColor = player.getPlayerInfo().getColor();
+        ChessPiece.PieceColor currentTurn = board.getCurrentTurn();
+        
+        if (playerColor != currentTurn) {
             return false;
         }
         
-        // Hamle yapılan konumda oyuncunun kendi taşı var mı?
-        ChessPiece piece = board.getPiece(move.getStartRow(), move.getStartCol());
-        if (piece == null || piece.getColor() != player.getPlayerInfo().getColor()) {
-            return false;
-        }
-        
-        // Hedef konumda kendi taşı var mı?
-        ChessPiece targetPiece = board.getPiece(move.getEndRow(), move.getEndCol());
-        if (targetPiece != null && targetPiece.getColor() == player.getPlayerInfo().getColor()) {
-            return false;
-        }
-        
-        // NOT: Bu basit bir kontrol, gerçek satranç mantığı daha karmaşıktır
-        // İlerleyen aşamalarda taşların hareket kurallarını ekleyebilirsiniz
-        
-        return true;
+        // Check if the move is valid according to the game rules
+        return board.isValidPosition(move.getStartRow(), move.getStartCol()) &&
+               board.isValidPosition(move.getEndRow(), move.getEndCol()) &&
+               board.getPiece(move.getStartRow(), move.getStartCol()) != null &&
+               board.getPiece(move.getStartRow(), move.getStartCol()).getColor() == playerColor;
     }
     
     private void checkGameEnd(GameSession gameSession) {
-        // Şah mat veya beraberlik kontrolü
-        // Şimdilik basit bir uygulama için es geçiyoruz
-        // İlerleyen aşamalarda ekleyebilirsiniz
+        ChessBoard board = gameSession.getChessBoard();
+        
+        // Check for checkmate or draw
+        if (board.isCheckmate(ChessPiece.PieceColor.WHITE)) {
+            board.setGameResult(board.getBlackPlayerName() + " won by checkmate!");
+            sendGameEndMessage(gameSession);
+        } else if (board.isCheckmate(ChessPiece.PieceColor.BLACK)) {
+            board.setGameResult(board.getWhitePlayerName() + " won by checkmate!");
+            sendGameEndMessage(gameSession);
+        } else if (board.isStalemate(board.getCurrentTurn())) {
+            board.setGameResult("Draw by stalemate!");
+            sendGameEndMessage(gameSession);
+        }
+        // Add more end game conditions as needed
+    }
+    
+    private void sendGameEndMessage(GameSession gameSession) {
+        ChessBoard board = gameSession.getChessBoard();
+        String result = board.getGameResult();
+        
+        Message gameEndMessage = new Message(Message.MessageType.GAME_END);
+        gameEndMessage.setContent(result);
+        
+        ClientHandler player1 = gameSession.getPlayer1();
+        ClientHandler player2 = gameSession.getPlayer2();
+        
+        player1.sendMessage(gameEndMessage);
+        player2.sendMessage(gameEndMessage);
+        
+        System.out.println("Game ended: " + player1.getUsername() + " vs " + player2.getUsername() + " - " + result);
+        
+        // Remove the game session
+        gameSessions.remove(gameSession);
     }
     
     private GameSession findGameSessionByClient(ClientHandler client) {
@@ -289,10 +325,10 @@ public class ChessServer {
     }
     
     public static void main(String[] args) {
-        new ChessServer().start();
+        ChessServer server = new ChessServer();
+        server.start();
     }
     
-    // İç sınıf: İstemci Yöneticisi
     private static class ClientHandler implements Runnable {
         private final Socket clientSocket;
         private final ChessServer server;
@@ -313,25 +349,20 @@ public class ChessServer {
                 writer = new PrintWriter(new OutputStreamWriter(clientSocket.getOutputStream(), "UTF-8"), true);
                 reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "UTF-8"));
                 
-                String inputLine;
-                while ((inputLine = reader.readLine()) != null) {
-                    try {
-                        Message message = gson.fromJson(inputLine, Message.class);
-                        server.handleMessage(message, this);
-                    } catch (Exception e) {
-                        System.err.println("Mesaj işlenirken hata oluştu: " + e.getMessage());
-                        e.printStackTrace();
-                    }
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    Message message = gson.fromJson(line, Message.class);
+                    server.handleMessage(message, this);
                 }
             } catch (IOException e) {
-                System.err.println("İstemci bağlantısında hata: " + e.getMessage());
+                System.err.println("Error handling client: " + e.getMessage());
             } finally {
-                server.removeClient(this);
                 try {
                     clientSocket.close();
                 } catch (IOException e) {
-                    System.err.println("Soket kapatılırken hata: " + e.getMessage());
+                    System.err.println("Error closing socket: " + e.getMessage());
                 }
+                server.removeClient(this);
             }
         }
         
@@ -356,7 +387,6 @@ public class ChessServer {
         }
     }
     
-    // İç sınıf: Oyun Oturumu
     private static class GameSession {
         private final ClientHandler player1;
         private final ClientHandler player2;
@@ -394,7 +424,8 @@ public class ChessServer {
         }
         
         public boolean isAllPlayersReady() {
-            return player1.getPlayerInfo().isReady() && player2.getPlayerInfo().isReady();
+            return player1.getPlayerInfo().isReady() && 
+                   player2.getPlayerInfo().isReady();
         }
     }
 } 

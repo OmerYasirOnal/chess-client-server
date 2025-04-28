@@ -268,4 +268,123 @@ public class ChessBoardTest {
         Boolean f6UnderAttack = (Boolean) isSquareUnderAttackMethod.invoke(chessBoard, 2, 5, ChessPiece.PieceColor.WHITE);
         assertTrue("f6 karesi siyah piyon tarafından tehdit edilmeli", f6UnderAttack);
     }
+    
+    @Test
+    public void testNoIllegalMovesWhileInCheck() {
+        // Özel bir düzen oluştur - şah çekme durumunu simüle etmek için
+        chessBoard = new ChessBoard();
+        
+        // Tahtayı temizle
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                chessBoard.setPiece(row, col, null);
+            }
+        }
+        
+        // Beyaz şahı e1'e (7,4) yerleştir
+        ChessPiece whiteKing = new ChessPiece(ChessPiece.PieceType.KING, ChessPiece.PieceColor.WHITE);
+        chessBoard.setPiece(7, 4, whiteKing);
+        
+        // Beyaz piyonu d2'ye (6,3) yerleştir
+        ChessPiece whitePawn = new ChessPiece(ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
+        chessBoard.setPiece(6, 3, whitePawn);
+        
+        // Siyah kaleyi e8'e (0,4) yerleştir - bu kale e sütununda şahı tehdit ediyor
+        ChessPiece blackRook = new ChessPiece(ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.BLACK);
+        chessBoard.setPiece(0, 4, blackRook);
+        
+        // Sıra beyazda olsun
+        chessBoard.setCurrentTurn(ChessPiece.PieceColor.WHITE);
+        
+        // Şah tehdit altında olmalı
+        assertTrue("Beyaz şah tehdit altında olmalıdır", chessBoard.isInCheck(ChessPiece.PieceColor.WHITE));
+        
+        // TEST 1: Piyon d2'den d3'e hareket edemez çünkü şahı tehditten kurtarmaz
+        ChessMove illegalMove = new ChessMove(6, 3, 5, 3, whitePawn);
+        // İllegal hamle tahtayı değiştirmemelidir
+        ChessPiece beforeMove = chessBoard.getPiece(6, 3);
+        chessBoard.makeMove(illegalMove);
+        ChessPiece afterMove = chessBoard.getPiece(6, 3);
+        
+        // Hamle yapılmamalı ve taşlar yerinde kalmalı
+        assertEquals("Şah çekme durumunda, şahı kurtarmayan hamle yapılmamalıdır", beforeMove, afterMove);
+        assertEquals("Piyon hala d2'de olmalı", whitePawn, chessBoard.getPiece(6, 3));
+        assertNull("d3 boş olmalı", chessBoard.getPiece(5, 3));
+        
+        // Sıra hala beyazda olmalı
+        assertTrue("Sıra hala beyazda olmalı", chessBoard.isWhiteTurn());
+        
+        // TEST 2: Şahı güvenli bir kareye hareket ettirmek legal olmalı
+        ChessMove legalKingMove = new ChessMove(7, 4, 7, 3, whiteKing);
+        chessBoard.makeMove(legalKingMove);
+        
+        // Şah yeni pozisyonda olmalı
+        assertNull("Şah e1'den hareket etmiş olmalı", chessBoard.getPiece(7, 4));
+        assertEquals("Şah d1'e hareket etmiş olmalı", whiteKing, chessBoard.getPiece(7, 3));
+        
+        // Sıra siyaha geçmiş olmalı
+        assertFalse("Sıra siyaha geçmiş olmalı", chessBoard.isWhiteTurn());
+        
+        // Şimdi tahtayı yeniden ayarlayalım
+        chessBoard = new ChessBoard();
+        
+        // Tahtayı temizle
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                chessBoard.setPiece(row, col, null);
+            }
+        }
+        
+        // Beyaz şahı e1'e (7,4) yerleştir
+        chessBoard.setPiece(7, 4, whiteKing);
+        
+        // Beyaz veziri d1'e (7,3) yerleştir
+        ChessPiece whiteQueen = new ChessPiece(ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.WHITE);
+        chessBoard.setPiece(7, 3, whiteQueen);
+        
+        // Siyah kaleyi e8'e (0,4) yerleştir - bu kale e sütununda şahı tehdit ediyor
+        chessBoard.setPiece(0, 4, blackRook);
+        
+        // Sıra beyazda olsun
+        chessBoard.setCurrentTurn(ChessPiece.PieceColor.WHITE);
+        
+        // TEST 3: Vezirin şahı tehdit eden taşı yakalaması legal olmalı
+        ChessMove legalCaptureMove = new ChessMove(7, 3, 0, 4, whiteQueen);
+        chessBoard.makeMove(legalCaptureMove);
+        
+        // Vezir yeni pozisyonda olmalı ve kaleyi yakalamalı
+        assertNull("Vezir d1'den hareket etmiş olmalı", chessBoard.getPiece(7, 3));
+        assertEquals("Vezir e8'e hareket ederek kaleyi yakalamalı", whiteQueen, chessBoard.getPiece(0, 4));
+        
+        // Şimdi tahtayı yeniden ayarlayalım
+        chessBoard = new ChessBoard();
+        
+        // Tahtayı temizle
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                chessBoard.setPiece(row, col, null);
+            }
+        }
+        
+        // Beyaz şahı e1'e (7,4) yerleştir
+        chessBoard.setPiece(7, 4, whiteKing);
+        
+        // Beyaz filini d2'ye (6,3) yerleştir
+        ChessPiece whiteBishop = new ChessPiece(ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);
+        chessBoard.setPiece(6, 3, whiteBishop);
+        
+        // Siyah kaleyi e8'e (0,4) yerleştir - bu kale e sütununda şahı tehdit ediyor
+        chessBoard.setPiece(0, 4, blackRook);
+        
+        // Sıra beyazda olsun
+        chessBoard.setCurrentTurn(ChessPiece.PieceColor.WHITE);
+        
+        // TEST 4: Fil şahı tehdit eden taşın yolunu kapatabilmeli
+        ChessMove legalBlockMove = new ChessMove(6, 3, 3, 4, whiteBishop);
+        chessBoard.makeMove(legalBlockMove);
+        
+        // Fil yeni pozisyonda olmalı ve kale ile şah arasında durmalı
+        assertNull("Fil d2'den hareket etmiş olmalı", chessBoard.getPiece(6, 3));
+        assertEquals("Fil e5'e hareket ederek şahı korumalı", whiteBishop, chessBoard.getPiece(3, 4));
+    }
 } 

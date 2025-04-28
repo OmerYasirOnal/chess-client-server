@@ -1,12 +1,19 @@
 # Multiplayer Chess Application - Changelog
 
+## v1.1.0 - 2024-05-29
+* Kod temizliği ve optimizasyon
+* Kullanıcı arayüzünde iyileştirmeler
+* Performans iyileştirmeleri
+* Belgelendirmeler güncellendi
+* Versiyon 1.1.0'a yükseltildi
+
 ## v1.0.0 - 2024-05-28
 * Initial release
 * Implemented basic chess rules
 * Completed client-server architecture
 * Designed user interface
 
-## Planned Enhancements (v1.1.0)
+## Planned Enhancements (v1.2.0)
 
 ### User Interface Improvements
 - [ ] Improve piece movement mechanism

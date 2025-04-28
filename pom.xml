@@ -6,7 +6,7 @@
 
     <groupId>com.chess</groupId>
     <artifactId>chess-game</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -82,7 +82,7 @@
                                     <mainClass>com.chess.server.ChessServer</mainClass>
                                 </transformer>
                             </transformers>
-                            <finalName>chess-server-1.0.0</finalName>
+                            <finalName>chess-server-1.1.0</finalName>
                         </configuration>
                     </execution>
                     <execution>
@@ -96,7 +96,7 @@
                                     <mainClass>com.chess.client.ChessClientSwing</mainClass>
                                 </transformer>
                             </transformers>
-                            <finalName>chess-client-1.0.0</finalName>
+                            <finalName>chess-client-1.1.0</finalName>
                         </configuration>
                     </execution>
                 </executions>

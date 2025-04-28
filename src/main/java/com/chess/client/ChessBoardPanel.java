@@ -1,8 +1,10 @@
 package com.chess.client;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -1127,18 +1129,75 @@ public class ChessBoardPanel extends JPanel {
     
     // Oyun sonu mesajını göster
     private void drawGameOverOverlay(Graphics2D g2d, String message) {
-        g2d.setColor(new Color(0, 0, 0, 150)); // Yarı saydam siyah
-        g2d.fillRect(0, 0, BOARD_SIZE * SQUARE_SIZE, BOARD_SIZE * SQUARE_SIZE);
+        int width = getWidth();
+        int height = getHeight();
         
-        g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Arial", Font.BOLD, 28));
+        // Yarı saydam arka plan
+        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.fillRect(0, 0, width, height);
         
-        // Metni ortala
-        int textWidth = g2d.getFontMetrics().stringWidth(message);
-        int x = (BOARD_SIZE * SQUARE_SIZE - textWidth) / 2;
-        int y = BOARD_SIZE * SQUARE_SIZE / 2;
+        // Oyun sonucu mesajı için kutu
+        int boxWidth = 400;
+        int boxHeight = 150;
+        int boxX = (width - boxWidth) / 2;
+        int boxY = (height - boxHeight) / 2;
         
-        g2d.drawString(message, x, y);
+        // Kutu arka planı
+        g2d.setColor(new Color(255, 255, 255, 230));
+        g2d.fillRoundRect(boxX, boxY, boxWidth, boxHeight, 20, 20);
+        
+        // Kutu kenarı
+        g2d.setColor(new Color(0, 0, 0));
+        g2d.setStroke(new BasicStroke(3));
+        g2d.drawRoundRect(boxX, boxY, boxWidth, boxHeight, 20, 20);
+        
+        // Mesaj metni
+        g2d.setFont(new Font("Arial", Font.BOLD, 20));
+        FontMetrics fm = g2d.getFontMetrics();
+        
+        // Zafer, yenilgi veya beraberlik göstergesine göre renk ayarla
+        if (message.contains("kazandı")) {
+            // Kazanan oyuncu adını al
+            String winner = message.substring(0, message.indexOf(" "));
+            if (playerColor != null) {
+                if ((playerColor == ChessPiece.PieceColor.WHITE && winner.equals(chessBoard.getWhitePlayerName())) ||
+                    (playerColor == ChessPiece.PieceColor.BLACK && winner.equals(chessBoard.getBlackPlayerName()))) {
+                    // Kazanma durumu
+                    g2d.setColor(new Color(0, 150, 0));
+                    g2d.drawString("ZAFER!", boxX + (boxWidth - fm.stringWidth("ZAFER!")) / 2, boxY + 50);
+                } else {
+                    // Kaybetme durumu
+                    g2d.setColor(new Color(150, 0, 0));
+                    g2d.drawString("MAĞLUBİYET", boxX + (boxWidth - fm.stringWidth("MAĞLUBİYET")) / 2, boxY + 50);
+                }
+            } else {
+                g2d.setColor(new Color(0, 0, 150));
+                g2d.drawString("OYUN SONA ERDİ", boxX + (boxWidth - fm.stringWidth("OYUN SONA ERDİ")) / 2, boxY + 50);
+            }
+        } else if (message.contains("berabere") || message.contains("draw")) {
+            // Beraberlik durumu
+            g2d.setColor(new Color(150, 100, 0));
+            g2d.drawString("BERABERLİK", boxX + (boxWidth - fm.stringWidth("BERABERLİK")) / 2, boxY + 50);
+        } else {
+            // Diğer durumlar
+            g2d.setColor(new Color(0, 0, 150));
+            g2d.drawString("OYUN SONA ERDİ", boxX + (boxWidth - fm.stringWidth("OYUN SONA ERDİ")) / 2, boxY + 50);
+        }
+        
+        // Mesaj detayları
+        g2d.setFont(new Font("Arial", Font.PLAIN, 14));
+        fm = g2d.getFontMetrics();
+        g2d.setColor(Color.BLACK);
+        
+        // Mesajı birden fazla satıra böl
+        int yPos = boxY + 80;
+        int lineHeight = fm.getHeight();
+        String[] lines = message.split("\\. ");
+        for (String line : lines) {
+            if (!line.endsWith(".")) line += ".";
+            g2d.drawString(line, boxX + (boxWidth - fm.stringWidth(line)) / 2, yPos);
+            yPos += lineHeight;
+        }
     }
     
     // Durum mesajını göster

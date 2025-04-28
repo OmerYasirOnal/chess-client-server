@@ -2,6 +2,9 @@
 
 A multiplayer chess game implemented in Java with client-server architecture, allowing two players to play chess over a network connection.
 
+## Current Version
+v1.1.0 - Check ChangeLog.txt for details.
+
 ## Features
 
 - Full implementation of standard chess rules

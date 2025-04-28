@@ -1,7 +1,6 @@
 package com.chess.client;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -21,7 +20,6 @@ import javax.swing.SwingUtilities;
 
 import com.chess.common.ChessPiece;
 import com.chess.common.Message;
-import com.chess.common.PlayerInfo;
 
 /**
  * Main game panel for the chess game. Contains the chess board, player information,
@@ -243,101 +241,110 @@ public class GamePanel extends JPanel {
                 client.disconnect();
                 System.exit(0);
                 break;
+            default:
+                break;
         }
     }
     
     public void showDisconnectMessage(String message) {
         JOptionPane.showMessageDialog(
             this,
-            "Connection lost: " + message,
-            "Connection Error",
-            JOptionPane.ERROR_MESSAGE
+            message,
+            "Disconnection",
+            JOptionPane.WARNING_MESSAGE
         );
-        
         ((MainFrame) SwingUtilities.getWindowAncestor(this)).showLoginPanel();
     }
     
     public void handleMoveMessage(Message message) {
-        // Apply the move on the board
         if (message.getMove() != null) {
-            boardPanel.makeRemoteMove(message.getMove());
+            // Process the move
+            boardPanel.makeMove(message.getMove());
             
-            // Update move history
-            addMoveToHistory(message.getMove().toString());
+            // Add to move history
+            String moveStr = message.getSender() + ": " + message.getMove().toString();
+            addMoveToHistory(moveStr);
             
-            // Update turn information
-            boolean isWhiteTurn = boardPanel.getBoard().isWhiteTurn();
+            // Update turn status
+            boolean isWhiteTurn = true; // Default to white's turn if can't determine
             boolean isMyTurn = (isWhiteTurn && playerColor == ChessPiece.PieceColor.WHITE) ||
-                               (!isWhiteTurn && playerColor == ChessPiece.PieceColor.BLACK);
+                             (!isWhiteTurn && playerColor == ChessPiece.PieceColor.BLACK);
             
-            turnLabel.setText(isMyTurn ? 
-                    (isWhiteTurn ? "White (You) to move" : "Black (You) to move") :
-                    (isWhiteTurn ? "White (Opponent) to move" : "Black (Opponent) to move"));
+            turnLabel.setText(isMyTurn ? "Your turn" : "Opponent's turn");
+        } else if (message.getContent() != null) {
+            // Show info message
+            JOptionPane.showMessageDialog(
+                this,
+                message.getContent(),
+                "Move Information",
+                JOptionPane.INFORMATION_MESSAGE
+            );
         }
     }
     
     public void handleInfoMessage(Message message) {
         switch (message.getType()) {
-            case PLAYER_INFO:
-                updatePlayersInfo(message);
-                break;
-            case READY:
-                addChatMessage("System", message.getSender() + " is ready!");
-                break;
             case CONNECT:
-                addChatMessage("System", message.getSender() + " connected.");
+                addChatMessage("System", message.getContent());
+                break;
+                
+            case READY:
+                addChatMessage("System", message.getContent());
+                break;
+                
+            default:
+                // If we get here with a playerInfo, update the player information
+                if (message.getPlayerInfo() != null) {
+                    updatePlayersInfo(message);
+                }
                 break;
         }
     }
     
     private void updatePlayersInfo(Message message) {
-        if (message.getPlayerInfos() == null || message.getPlayerInfos().isEmpty()) {
-            return;
+        if (message.getPlayerInfo() != null) {
+            // Update player information
+            Message.PlayerInfo playerInfo = message.getPlayerInfo();
+            playerColor = playerInfo.getColor();
+            
+            // Update UI elements
+            boardPanel.setPlayerColor(playerColor);
+            
+            // Update players panel
+            playersPanel.removeAll();
+            
+            JLabel whitePlayerLabel = new JLabel("White: " + 
+                    (playerColor == ChessPiece.PieceColor.WHITE ? 
+                            client.getUsername() + " (You)" : "Opponent"));
+            whitePlayerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            playersPanel.add(whitePlayerLabel);
+            
+            JLabel blackPlayerLabel = new JLabel("Black: " + 
+                    (playerColor == ChessPiece.PieceColor.BLACK ? 
+                            client.getUsername() + " (You)" : "Opponent"));
+            blackPlayerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            playersPanel.add(blackPlayerLabel);
+            
+            playersPanel.revalidate();
+            playersPanel.repaint();
         }
-        
-        playersPanel.removeAll();
-        
-        for (PlayerInfo player : message.getPlayerInfos()) {
-            JPanel playerPanel = new JPanel();
-            playerPanel.setLayout(new BoxLayout(playerPanel, BoxLayout.X_AXIS));
-            playerPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            playerPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-            
-            // Username
-            JLabel nameLabel = new JLabel(player.getUsername());
-            nameLabel.setFont(new Font("Arial", Font.BOLD, 12));
-            
-            // Ready status
-            JLabel statusLabel = new JLabel(player.isReady() ? " (Ready)" : " (Waiting)");
-            statusLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-            statusLabel.setForeground(player.isReady() ? new Color(0, 128, 0) : Color.GRAY);
-            
-            playerPanel.add(nameLabel);
-            playerPanel.add(statusLabel);
-            playerPanel.add(Box.createHorizontalGlue());
-            
-            playersPanel.add(playerPanel);
-            playersPanel.add(Box.createVerticalStrut(5));
-        }
-        
-        playersPanel.revalidate();
-        playersPanel.repaint();
     }
     
     private void addMoveToHistory(String moveStr) {
-        // Add the move to history
-        int moveCount = moveHistoryArea.getText().split("\n").length + 1;
-        String prefix = (moveCount % 2 == 1) ? (moveCount / 2 + 1) + ". " : "   ";
-        moveHistoryArea.append(prefix + moveStr + "\n");
+        moveHistoryArea.append(moveStr + "\n");
         moveHistoryArea.setCaretPosition(moveHistoryArea.getDocument().getLength());
     }
     
     public void resetGame() {
+        // Reset board
         boardPanel.resetBoard();
         boardPanel.setLocked(false);
-        moveHistoryArea.setText("");
-        gameStatusLabel.setText("New Game");
+        
+        // Reset game status
+        gameStatusLabel.setText("Waiting for Players");
         turnLabel.setText("Waiting...");
+        
+        // Enable ready button
         readyButton.setEnabled(true);
     }
     

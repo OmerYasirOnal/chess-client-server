@@ -43,7 +43,18 @@ public class MainFrame extends JFrame {
     
     public void showLoginPanel() {
         if (loginPanel == null) {
-            loginPanel = new LoginPanel(this);
+            loginPanel = new LoginPanel();
+            
+            // Set login listener
+            loginPanel.setLoginListener((username, server, port) -> {
+                try {
+                    client = new ChessClient(server, port, username);
+                    client.connect();
+                    startGame(client);
+                } catch (Exception e) {
+                    loginPanel.setErrorMessage("Error connecting: " + e.getMessage());
+                }
+            });
         }
         
         setContentPane(loginPanel);
@@ -99,9 +110,12 @@ public class MainFrame extends JFrame {
                     
                 case CONNECT:
                 case READY:
-                case PLAYER_INFO:
                     // These messages can be handled by GamePanel
                     gamePanel.handleInfoMessage(message);
+                    break;
+                
+                default:
+                    // Ignore other messages
                     break;
             }
         });

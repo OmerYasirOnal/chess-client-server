@@ -1,0 +1,52 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Cursor AI Coding Rules for Chess Project
+
+1. Commit and Push Behavior
+- After every meaningful change, create a clear and descriptive commit.
+- Use short but informative commit messages. Example commit messages:
+  - "Add join game screen"
+  - "Fix client connection issue"
+  - "Refactor server communication"
+- After committing, immediately push the changes to the remote GitHub repository.
+- Do not bundle unrelated changes into a single commit. Each commit must represent a logical unit of work.
+
+2. Code Comments
+- All comments must be written in English.
+- Write clear and concise comments explaining complex logic, function purposes, and important decisions.
+- Example comment:
+  // Connect to the server using the provided IP address
+
+- Avoid unnecessary comments for obvious code.
+
+3. Server Update and Deployment
+If a change is made on the server-side (server code modifications):
+
+- Rebuild the server application as a `.jar` file (chess-server.jar).
+
+- Connect to the server using the following SSH command:
+  ssh -i ~/.ssh/id_ed25519 ubuntu@141.147.25.123
+
+- Copy the updated chess-server.jar file to the server:
+  scp -i ~/.ssh/id_ed25519 chess-server.jar ubuntu@141.147.25.123:~/chess-server/
+
+- After copying, SSH into the server:
+  ssh -i ~/.ssh/id_ed25519 ubuntu@141.147.25.123
+
+- Navigate to the server folder:
+  cd ~/chess-server/
+
+- Restart the server application using pm2:
+  pm2 restart chess-server
+
+- Always verify that the server is running properly after restarting. 
+- If there are any errors during deployment, fix them immediately before continuing client development.
+
+4. General Best Practices
+- Keep the code clean and well-organized.
+- Follow consistent formatting (indentation, brackets, spacing).
+- Prioritize readability over unnecessary complexity.
+- If unsure about an implementation, prefer simple and maintainable solutions first, then optimize if needed.

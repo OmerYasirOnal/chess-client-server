@@ -14,6 +14,10 @@ public class ChessBoard implements Serializable {
     private boolean gameOver;
     private String gameResult;
     
+    // Oyuncu adları
+    private String whitePlayerName;
+    private String blackPlayerName;
+    
     // For en passant
     private int lastPawnMoveRow = -1;
     private int lastPawnMoveCol = -1;
@@ -27,6 +31,8 @@ public class ChessBoard implements Serializable {
         board = new ChessPiece[BOARD_SIZE][BOARD_SIZE];
         currentTurn = ChessPiece.PieceColor.WHITE; // White starts
         gameOver = false;
+        whitePlayerName = "White Player";
+        blackPlayerName = "Black Player";
         
         initializeBoard();
         
@@ -93,6 +99,83 @@ public class ChessBoard implements Serializable {
         
         ChessPiece piece = board[startRow][startCol];
         ChessPiece capturedPiece = board[endRow][endCol];
+        
+        // Hamle doğrulaması: Eğer hamle yapan oyuncu şah çekme durumundaysa, 
+        // sadece şahı tehditten kurtaran hamlelere izin verilir
+        if (piece != null && isInCheck(piece.getColor())) {
+            // En passant durumu için özel kontrol
+            boolean isEnPassant = false;
+            ChessPiece tempCapturedPiece = null;
+            
+            if (piece.getType() == ChessPiece.PieceType.PAWN && 
+                endCol != startCol && 
+                capturedPiece == null) {
+                
+                // Diagonal move with no piece at target but column changed, could be en passant
+                if (lastMoveWasDoublePawnPush && 
+                    startRow == lastPawnMoveRow && 
+                    endCol == lastPawnMoveCol) {
+                    
+                    tempCapturedPiece = board[startRow][endCol];
+                    board[startRow][endCol] = null; // Temporary removal of captured pawn
+                    isEnPassant = true;
+                }
+            }
+            
+            // Rok durumu için özel kontrol
+            boolean isCastling = false;
+            ChessPiece rook = null;
+            int rookStartCol = -1;
+            int rookEndCol = -1;
+            
+            if (piece.getType() == ChessPiece.PieceType.KING && Math.abs(startCol - endCol) > 1) {
+                isCastling = true;
+                
+                // Kingside castling
+                if (endCol > startCol) {
+                    rookStartCol = 7;
+                    rookEndCol = 5;
+                } 
+                // Queenside castling
+                else {
+                    rookStartCol = 0;
+                    rookEndCol = 3;
+                }
+                
+                rook = board[startRow][rookStartCol];
+                
+                // Temporarily move rook
+                board[startRow][rookEndCol] = rook;
+                board[startRow][rookStartCol] = null;
+            }
+            
+            // Geçici olarak hamleyi uygula
+            board[endRow][endCol] = piece;
+            board[startRow][startCol] = null;
+            
+            // Hamle sonrası şah hala tehdit altında mı kontrol et
+            boolean stillInCheck = isInCheck(piece.getColor());
+            
+            // Hamleyi geri al
+            board[startRow][startCol] = piece;
+            board[endRow][endCol] = capturedPiece;
+            
+            // En passant durumunu geri al
+            if (isEnPassant && tempCapturedPiece != null) {
+                board[startRow][endCol] = tempCapturedPiece;
+            }
+            
+            // Rok durumunu geri al
+            if (isCastling && rook != null) {
+                board[startRow][rookStartCol] = rook;
+                board[startRow][rookEndCol] = null;
+            }
+            
+            // Eğer şah hala tehdit altındaysa, hamle geçersizdir
+            if (stillInCheck) {
+                return; // Hamleyi uygulamadan çık
+            }
+        }
         
         // Save the captured piece (if any)
         move.setCapturedPiece(capturedPiece);
@@ -641,6 +724,10 @@ public class ChessBoard implements Serializable {
         return gameOver;
     }
     
+    public void updateGameState() {
+        checkGameState();
+    }
+    
     public void setGameOver(boolean gameOver) {
         this.gameOver = gameOver;
     }
@@ -941,5 +1028,21 @@ public class ChessBoard implements Serializable {
                 moves.add(new Point(row, col - 2));
             }
         }
+    }
+    
+    public void setWhitePlayerName(String name) {
+        this.whitePlayerName = name;
+    }
+    
+    public void setBlackPlayerName(String name) {
+        this.blackPlayerName = name;
+    }
+    
+    public String getWhitePlayerName() {
+        return whitePlayerName;
+    }
+    
+    public String getBlackPlayerName() {
+        return blackPlayerName;
     }
 } 
