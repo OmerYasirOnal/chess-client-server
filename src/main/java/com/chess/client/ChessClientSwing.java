@@ -141,6 +141,8 @@ public class ChessClientSwing {
 
         // Chess board
         chessBoardPanel = new ChessBoardPanel(client);
+        // Başlangıçta tahtayı kilitli tut (oyuncular hazır olana kadar)
+        chessBoardPanel.setLocked(true);
         gamePanel.add(chessBoardPanel, BorderLayout.CENTER);
 
         // Right panel
@@ -150,7 +152,7 @@ public class ChessClientSwing {
         rightPanel.setPreferredSize(new Dimension(250, 600));
 
         // Status label
-        statusLabel = new JLabel("Waiting for opponent...");
+        statusLabel = new JLabel("Opponent connecting...");
         statusLabel.setFont(new Font("Arial", Font.BOLD, 14));
         statusLabel.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
         rightPanel.add(statusLabel);
@@ -184,12 +186,19 @@ public class ChessClientSwing {
         rightPanel.add(Box.createVerticalStrut(20));
 
         // Buttons
-        readyButton = new JButton("Ready");
+        readyButton = new JButton("I'm Ready");
+        readyButton.setFont(new Font("Arial", Font.BOLD, 14));
+        readyButton.setBackground(new Color(70, 130, 180));
+        readyButton.setForeground(Color.WHITE);
         readyButton.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
         readyButton.addActionListener(e -> {
             client.sendReadyMessage();
             readyButton.setEnabled(false);
-            statusLabel.setText("You are ready, waiting for your opponent to be ready...");
+            readyButton.setText("Waiting for opponent...");
+            statusLabel.setText("You are ready. Waiting for your opponent to be ready...");
+            
+            // Tahtayı kilitli tut
+            chessBoardPanel.setLocked(true);
         });
         rightPanel.add(readyButton);
         
@@ -241,17 +250,33 @@ public class ChessClientSwing {
                 }
                 updateStatus(message.getContent());
                 showGamePanel();
+                
+                // Oyun başladıysa tahtanın kilidini aç (eğer hazırsa ve sırası geldiyse)
+                if (message.getContent().contains("Game started")) {
+                    ChessPiece.PieceColor turn = chessBoardPanel.getBoard().getCurrentTurn();
+                    if (turn == chessBoardPanel.getBoard().getCurrentTurn()) {
+                        chessBoardPanel.setLocked(false);
+                    }
+                }
                 break;
             case MOVE:
                 if (message.getMove() != null) {
                     chessBoardPanel.makeMove(message.getMove());
-                    updateStatus("Your turn");
+                    // Hamleden sonra, oyuncunun sırası geldiyse tahtanın kilidini aç
+                    if (chessBoardPanel.getBoard().getCurrentTurn() == chessBoardPanel.getPlayerColor()) {
+                        chessBoardPanel.setLocked(false);
+                        updateStatus("Your turn");
+                    } else {
+                        chessBoardPanel.setLocked(true);
+                        updateStatus("Opponent's turn");
+                    }
                 } else {
                     updateStatus(message.getContent());
                 }
                 break;
             case GAME_END:
                 updateStatus(message.getContent());
+                chessBoardPanel.setLocked(true); // Oyun bittiğinde tahtayı kilitle
                 showGameEndDialog(message.getContent());
                 break;
             case CHAT:
@@ -259,10 +284,22 @@ public class ChessClientSwing {
                 break;
             case READY:
                 updateStatus(message.getContent());
+                // Rakip hazır olduğunda bildir
+                if (message.getContent().contains("is ready")) {
+                    if (readyButton.isEnabled()) {
+                        // Diğer oyuncu hazır, biz değiliz
+                        readyButton.setText("Click to Ready Up");
+                        readyButton.setBackground(new Color(0, 180, 0)); // Daha belirgin yeşil
+                    } else {
+                        // Her iki oyuncu da hazır
+                        statusLabel.setText("Both players ready. Game will start soon...");
+                    }
+                }
                 break;
             case DISCONNECT:
                 updateStatus(message.getContent());
                 if (isInGame) {
+                    chessBoardPanel.setLocked(true); // Rakip ayrıldığında tahtayı kilitle
                     showGameEndDialog("Opponent left the game. Game over.");
                 }
                 break;

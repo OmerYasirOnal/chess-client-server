@@ -257,6 +257,12 @@ public class ChessServer {
     }
     
     private void startGame(GameSession gameSession) {
+        // Her iki oyuncunun da hazır olduğundan emin ol
+        if (!gameSession.isAllPlayersReady()) {
+            System.out.println("Not starting game - both players are not ready yet.");
+            return; // Her iki oyuncu da hazır değilse, oyunu başlatma
+        }
+        
         // Initialize the game board
         ChessBoard board = gameSession.getChessBoard();
         
@@ -269,6 +275,9 @@ public class ChessServer {
         
         gameSession.getPlayer1().sendMessage(gameStartMessage);
         gameSession.getPlayer2().sendMessage(gameStartMessage);
+        
+        System.out.println("Game started between " + gameSession.getPlayer1().getUsername() + 
+                          " and " + gameSession.getPlayer2().getUsername());
     }
     
     private boolean isValidMove(ChessMove move, ChessBoard board, ClientHandler player) {

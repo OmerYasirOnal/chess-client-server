@@ -6,11 +6,14 @@ alwaysApply: true
 Cursor AI Coding Rules for Chess Project
 
 1. Commit and Push Behavior
-- After every meaningful change, create a clear and descriptive commit.
-- Use short but informative commit messages. Example commit messages:
-  - "Add join game screen"
-  - "Fix client connection issue"
-  - "Refactor server communication"
+- Do not automatically commit and push after every change.
+- Only perform commit and push when explicitly instructed with the command: "commit and push".
+- When committing:
+  - Create a clear and descriptive commit message.
+  - Use short but informative commit messages. Example commit messages:
+    - "Add join game screen"
+    - "Fix client connection issue"
+    - "Refactor server communication"
 - After committing, immediately push the changes to the remote GitHub repository.
 - Do not bundle unrelated changes into a single commit. Each commit must represent a logical unit of work.
 
@@ -19,30 +22,26 @@ Cursor AI Coding Rules for Chess Project
 - Write clear and concise comments explaining complex logic, function purposes, and important decisions.
 - Example comment:
   // Connect to the server using the provided IP address
-
 - Avoid unnecessary comments for obvious code.
 
 3. Server Update and Deployment
-If a change is made on the server-side (server code modifications):
+- Only perform server deployment when explicitly instructed with the command: "deploy to server".
+- Otherwise, always run and test the server application locally without uploading to the server.
 
-- Rebuild the server application as a `.jar` file (chess-server.jar).
+- Server Deployment Steps (only when "deploy to server" is triggered):
+  1. Rebuild the server application as a `.jar` file (chess-server.jar).
+  2. Connect to the server using the following SSH command:
+     ssh -i ~/.ssh/id_ed25519 ubuntu@141.147.25.123
+  3. Copy the updated chess-server.jar file to the server:
+     scp -i ~/.ssh/id_ed25519 chess-server.jar ubuntu@141.147.25.123:~/chess-server/
+  4. SSH into the server:
+     ssh -i ~/.ssh/id_ed25519 ubuntu@141.147.25.123
+  5. Navigate to the server folder:
+     cd ~/chess-server/
+  6. Restart the server application using pm2:
+     pm2 restart chess-server
 
-- Connect to the server using the following SSH command:
-  ssh -i ~/.ssh/id_ed25519 ubuntu@141.147.25.123
-
-- Copy the updated chess-server.jar file to the server:
-  scp -i ~/.ssh/id_ed25519 chess-server.jar ubuntu@141.147.25.123:~/chess-server/
-
-- After copying, SSH into the server:
-  ssh -i ~/.ssh/id_ed25519 ubuntu@141.147.25.123
-
-- Navigate to the server folder:
-  cd ~/chess-server/
-
-- Restart the server application using pm2:
-  pm2 restart chess-server
-
-- Always verify that the server is running properly after restarting. 
+- Always verify that the server is running properly after restarting.
 - If there are any errors during deployment, fix them immediately before continuing client development.
 
 4. General Best Practices

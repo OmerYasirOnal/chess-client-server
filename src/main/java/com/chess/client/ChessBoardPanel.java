@@ -251,20 +251,26 @@ public class ChessBoardPanel extends JPanel {
             g2d.fillRect(drawCol * SQUARE_SIZE, drawRow * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
         }
         
-        // Geçerli hamle göstergelerini çiz
+        // Geçerli hamleleri göster
         drawValidMoveIndicators(g2d);
         
-        // Geçersiz hamle efekti (kırmızı yanıp sönme)
+        // Hatalı hamleleri göster (yanıp sönerek)
         if (invalidMove != null && isFlashing) {
-            g2d.setColor(new Color(255, 0, 0, 150)); // Kırmızı yarı şeffaf
-            
             int drawRow = boardFlipped ? (BOARD_SIZE - 1 - invalidMove.x) : invalidMove.x;
             int drawCol = boardFlipped ? (BOARD_SIZE - 1 - invalidMove.y) : invalidMove.y;
             
+            // Daha belirgin bir kırmızı yanıp sönme efekti
+            g2d.setColor(new Color(255, 0, 0, 150)); // Kırmızı, yarı saydam
             g2d.fillRect(drawCol * SQUARE_SIZE, drawRow * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+            
+            // Ayrıca bir çerçeve çizelim
+            g2d.setColor(new Color(255, 0, 0));
+            g2d.setStroke(new BasicStroke(3.0f));
+            g2d.drawRect(drawCol * SQUARE_SIZE + 2, drawRow * SQUARE_SIZE + 2, 
+                         SQUARE_SIZE - 4, SQUARE_SIZE - 4);
         }
         
-        // Taşları çiz
+        // Draw pieces
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0; col < BOARD_SIZE; col++) {
                 ChessPiece piece = chessBoard.getPiece(row, col);
@@ -274,11 +280,14 @@ public class ChessBoardPanel extends JPanel {
             }
         }
         
-        // Oyun durumu bilgisini göster
+        // Draw status message (if any)
+        if (!statusMessage.isEmpty()) {
+            drawStateMessage(g2d, statusMessage, statusColor);
+        }
+        
+        // Draw game over overlay if needed
         if (chessBoard.isGameOver()) {
             drawGameOverOverlay(g2d, chessBoard.getGameResult());
-        } else if (!statusMessage.isEmpty()) {
-            drawStateMessage(g2d, statusMessage, statusColor);
         }
     }
     
@@ -344,14 +353,28 @@ public class ChessBoardPanel extends JPanel {
         
         // Geçerli bir kare seçili değilse ve tıklanan karede kendi taşımız varsa
         ChessPiece clickedPiece = chessBoard.getPiece(clickRow, clickCol);
+        
+        // Oyuncunun sırası değilse, kırmızı yanıp sönme göster
+        if (chessBoard.getCurrentTurn() != playerColor) {
+            invalidMove = new Point(clickRow, clickCol);
+            isFlashing = true;
+            flashTimer.restart();
+            return;
+        }
+        
         if (selectedRow == -1 && selectedCol == -1) {
-            if (clickedPiece != null && clickedPiece.getColor() == playerColor 
-                    && chessBoard.getCurrentTurn() == playerColor) {
+            // Kendi taşımızı seçtik mi kontrol et
+            if (clickedPiece != null && clickedPiece.getColor() == playerColor) {
                 selectedRow = clickRow;
                 selectedCol = clickCol;
                 // Taşın gidebileceği yerleri belirle
                 calculateValidMoves(clickRow, clickCol);
                 repaint();
+            } else if (clickedPiece != null) {
+                // Rakibin taşına tıkladı - kırmızı yanıp sönme göster
+                invalidMove = new Point(clickRow, clickCol);
+                isFlashing = true;
+                flashTimer.restart();
             }
         } 
         // Bir kare seçiliyse ve farklı bir kareye tıklandıysa
@@ -1223,6 +1246,15 @@ public class ChessBoardPanel extends JPanel {
     }
     
     private void tryMove(int startRow, int startCol, int endRow, int endCol) {
+        // Oyuncunun sırası mı kontrol et
+        if (chessBoard.getCurrentTurn() != playerColor) {
+            // Sırası değilse kırmızı yanıp sönme göster
+            invalidMove = new Point(startRow, startCol);
+            isFlashing = true;
+            flashTimer.restart();
+            return;
+        }
+        
         // Hamleyi oluştur
         ChessMove move = new ChessMove(startRow, startCol, endRow, endCol);
         ChessPiece piece = chessBoard.getPiece(startRow, startCol);
@@ -1281,5 +1313,9 @@ public class ChessBoardPanel extends JPanel {
         selectedCol = -1;
         validMoves.clear();
         repaint();
+    }
+    
+    public ChessPiece.PieceColor getPlayerColor() {
+        return playerColor;
     }
 } 

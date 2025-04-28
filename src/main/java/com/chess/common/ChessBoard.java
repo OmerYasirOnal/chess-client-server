@@ -507,83 +507,76 @@ public class ChessBoard implements Serializable {
         ChessPiece piece = board[startRow][startCol];
         ChessPiece capturedPiece = board[endRow][endCol];
         
-        // If king is trying to capture a piece that is in check, move is illegal
-        if (piece.getType() == ChessPiece.PieceType.KING && 
-            capturedPiece != null && 
-            isSquareUnderAttack(endRow, endCol, color)) {
+        if (piece == null || piece.getColor() != color) {
             return false;
         }
         
-        // Temporary piece storage
-        ChessPiece tempCapturedPiece = null;
-        boolean isEnPassant = false;
+        // Check if the move is within board bounds
+        if (!isValidPosition(startRow, startCol) || !isValidPosition(endRow, endCol)) {
+            return false;
+        }
         
-        // En passant check
-        if (piece.getType() == ChessPiece.PieceType.PAWN && 
-            endCol != startCol && 
-            capturedPiece == null) {
-            
-            // Diagonal move with no piece at target but column changed, could be en passant
-            if (lastMoveWasDoublePawnPush && 
-                startRow == lastPawnMoveRow && 
-                endCol == lastPawnMoveCol) {
-                
-                tempCapturedPiece = board[startRow][endCol];
-                board[startRow][endCol] = null; // Temporary removal of captured pawn
-                isEnPassant = true;
+        // Check if the target is not our own piece
+        if (capturedPiece != null && capturedPiece.getColor() == color) {
+            return false;
+        }
+        
+        // Check if the move is valid for the piece type
+        List<Point> validMoves = calculatePieceMoves(startRow, startCol, piece);
+        boolean isValidPieceMove = false;
+        
+        for (Point move : validMoves) {
+            if (move.x == endRow && move.y == endCol) {
+                isValidPieceMove = true;
+                break;
             }
         }
         
-        // Rook check
-        boolean isCastling = false;
-        ChessPiece rook = null;
-        int rookStartCol = -1;
-        int rookEndCol = -1;
-        
-        if (piece.getType() == ChessPiece.PieceType.KING && Math.abs(startCol - endCol) > 1) {
-            isCastling = true;
-            
-            // Kingside castling
-            if (endCol > startCol) {
-                rookStartCol = 7;
-                rookEndCol = 5;
-            } 
-            // Queenside castling
-            else {
-                rookStartCol = 0;
-                rookEndCol = 3;
-            }
-            
-            rook = board[startRow][rookStartCol];
-            
-            // Temporarily move rook
-            board[startRow][rookEndCol] = rook;
-            board[startRow][rookStartCol] = null;
+        if (!isValidPieceMove) {
+            return false;
         }
         
-        // Simulate move temporarily
+        // Make the move temporarily
+        ChessPiece tempCapturedPiece = capturedPiece;
         board[endRow][endCol] = piece;
         board[startRow][startCol] = null;
         
-        // Check if king is in check
-        boolean isLegal = !isInCheck(color);
+        // Special case for en passant capture
+        if (piece.getType() == ChessPiece.PieceType.PAWN && 
+            startCol != endCol && 
+            tempCapturedPiece == null) {
+            
+            // This could be an en passant capture
+            // The captured pawn is at the same row as the starting position
+            tempCapturedPiece = board[startRow][endCol];
+            if (tempCapturedPiece != null && 
+                tempCapturedPiece.getType() == ChessPiece.PieceType.PAWN &&
+                lastMoveWasDoublePawnPush &&
+                startRow == lastPawnMoveRow &&
+                endCol == lastPawnMoveCol) {
+                
+                // Remove the captured pawn temporarily
+                board[startRow][endCol] = null;
+            }
+        }
         
-        // Undo move
+        // Check if the king is in check after the move
+        boolean inCheck = isInCheck(color);
+        
+        // Undo the move
         board[startRow][startCol] = piece;
         board[endRow][endCol] = capturedPiece;
         
-        // Return captured piece to board
-        if (isEnPassant && tempCapturedPiece != null) {
+        // Restore the en passant captured pawn if needed
+        if (piece.getType() == ChessPiece.PieceType.PAWN && 
+            startCol != endCol && 
+            capturedPiece == null) {
+            
             board[startRow][endCol] = tempCapturedPiece;
         }
         
-        // Undo rook move
-        if (isCastling && rook != null) {
-            board[startRow][rookStartCol] = rook;
-            board[startRow][rookEndCol] = null;
-        }
-        
-        return isLegal;
+        // If this move would put or leave the king in check, it's not legal
+        return !inCheck;
     }
     
     // 50 move rule check
