@@ -85,6 +85,11 @@ public class ChessServer {
     }
     
     public void handleMessage(Message message, ClientHandler sender) {
+        if (message == null || message.getType() == null) {
+            System.err.println("Null mesaj veya mesaj tipi");
+            return;
+        }
+        
         switch (message.getType()) {
             case CONNECT:
                 handleConnect(message, sender);
@@ -123,27 +128,10 @@ public class ChessServer {
         PlayerInfo playerInfo = new PlayerInfo(username);
         sender.setPlayerInfo(playerInfo);
         
-        // If there's a waiting player, match them
-        if (clients.size() >= 2) {
-            boolean matched = false;
-            for (ClientHandler client : clients) {
-                if (client != sender && !isClientInGame(client)) {
-                    createGameSession(sender, client);
-                    matched = true;
-                    break;
-                }
-            }
-            
-            if (!matched) {
-                Message waitingMessage = new Message(Message.MessageType.CONNECT);
-                waitingMessage.setContent("Waiting for a match...");
-                sender.sendMessage(waitingMessage);
-            }
-        } else {
-            Message waitingMessage = new Message(Message.MessageType.CONNECT);
-            waitingMessage.setContent("Waiting for an opponent...");
-            sender.sendMessage(waitingMessage);
-        }
+        // Notify client about successful connection
+        Message connectionMessage = new Message(Message.MessageType.CONNECT);
+        connectionMessage.setContent("Connected to server as " + username);
+        sender.sendMessage(connectionMessage);
         
         // Notify other users
         Message broadcastMessage = new Message(Message.MessageType.CONNECT);
@@ -372,8 +360,18 @@ public class ChessServer {
                 
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    Message message = gson.fromJson(line, Message.class);
-                    server.handleMessage(message, this);
+                    try {
+                        Message message = gson.fromJson(line, Message.class);
+                        // Null mesaj veya mesaj tipi kontrolü
+                        if (message == null || message.getType() == null) {
+                            System.err.println("Geçersiz mesaj alındı: " + line);
+                            continue;
+                        }
+                        server.handleMessage(message, this);
+                    } catch (Exception e) {
+                        System.err.println("Mesaj işlenirken hata oluştu: " + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
             } catch (IOException e) {
                 System.err.println("Error handling client: " + e.getMessage());
@@ -496,8 +494,25 @@ public class ChessServer {
     
     // Yeni oyun oluştur
     private void handleCreateGame(Message message, ClientHandler sender) {
-        String gameId = message.getGameId();
-        String timeControl = message.getTimeControl();
+        // GameInfo nesnesinden bilgileri al
+        Message.GameInfo gameInfo = null;
+        String gameId = null;
+        String timeControl = null;
+        
+        if (message.getGameInfo() != null) {
+            gameInfo = message.getGameInfo();
+            gameId = gameInfo.getId();
+            timeControl = gameInfo.getTimeControl();
+        } else {
+            // Eski yöntem (geriye dönük uyumluluk için)
+            gameId = message.getGameId();
+            timeControl = message.getTimeControl();
+        }
+        
+        // ID null ise, UUID oluştur
+        if (gameId == null) {
+            gameId = java.util.UUID.randomUUID().toString();
+        }
         
         // Eğer kullanıcı zaten bir oyun içindeyse, önce o oyunu sonlandır
         GameSession existingSession = findGameSessionByClient(sender);
@@ -531,6 +546,9 @@ public class ChessServer {
         
         sender.sendMessage(confirmMessage);
         
+        // Tüm kullanıcılara oyun listesinin güncellendiğini bildir
+        broadcast(createLobbyUpdateMessage(), null);
+        
         System.out.println("New game created by: " + sender.getUsername() + ", ID: " + gameId);
     }
     
@@ -538,50 +556,68 @@ public class ChessServer {
     private void handleJoinGame(Message message, ClientHandler sender) {
         String gameId = message.getGameId();
         
-        // Oyun ID'sine göre oyun oturumunu bul
+        // Check if this client is already in a game
+        if (isClientInGame(sender)) {
+            Message errorMessage = new Message(Message.MessageType.JOIN_GAME);
+            errorMessage.setContent("You are already in a game!");
+            sender.sendMessage(errorMessage);
+            return;
+        }
+        
+        // Find the game session
         GameSession gameSession = findGameSessionById(gameId);
         
-        if (gameSession != null && gameSession.getPlayer2() == null) {
-            // İkinci oyuncuyu ekle
-            gameSession.setPlayer2(sender);
-            
-            // Oyuncu rengi atama
-            sender.setPlayerInfo(new PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.BLACK));
-            
-            // Oyun tahtasına oyuncu adlarını atama
-            ChessBoard board = gameSession.getChessBoard();
-            board.setBlackPlayerName(sender.getUsername());
-            
-            ClientHandler player1 = gameSession.getPlayer1();
-            
-            // Her iki oyuncuya da oyunun başladığını bildir
-            Message message1 = new Message(Message.MessageType.GAME_START);
-            message1.setContent("Your opponent: " + sender.getUsername() + ". Your color: White");
-            
-            Message.PlayerInfo messagePlayerInfo1 = new Message.PlayerInfo(
-                    player1.getUsername(), 
-                    player1.getPlayerInfo().getColor()
-            );
-            message1.setPlayerInfo(messagePlayerInfo1);
-            
-            player1.sendMessage(message1);
-            
-            Message message2 = new Message(Message.MessageType.GAME_START);
-            message2.setContent("Your opponent: " + player1.getUsername() + ". Your color: Black");
-            
-            Message.PlayerInfo messagePlayerInfo2 = new Message.PlayerInfo(
-                    sender.getUsername(), 
-                    sender.getPlayerInfo().getColor()
-            );
-            message2.setPlayerInfo(messagePlayerInfo2);
-            
-            sender.sendMessage(message2);
-            
-            System.out.println("Player joined game: " + sender.getUsername() + " joined " + player1.getUsername() + "'s game");
+        if (gameSession != null) {
+            // Make sure the session is waiting for a player
+            if (gameSession.getPlayer2() == null) {
+                gameSession.setPlayer2(sender);
+                
+                // Update player info
+                sender.setPlayerInfo(new PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.BLACK));
+                
+                // Add player2 name to chessboard
+                ChessBoard board = gameSession.getChessBoard();
+                board.setBlackPlayerName(sender.getUsername());
+                
+                ClientHandler hostPlayer = gameSession.getPlayer1();
+                
+                // Notify both players about the game
+                // Notify player 1 (host)
+                Message gameStartMessage1 = new Message(Message.MessageType.GAME_START);
+                gameStartMessage1.setContent("Player " + sender.getUsername() + " joined your game. Your color: White");
+                
+                // Create a Message.PlayerInfo from PlayerInfo
+                Message.PlayerInfo messagePlayerInfo1 = new Message.PlayerInfo(hostPlayer.getUsername(), hostPlayer.getPlayerInfo().getColor());
+                gameStartMessage1.setPlayerInfo(messagePlayerInfo1);
+                
+                hostPlayer.sendMessage(gameStartMessage1);
+                
+                // Notify player 2 (joining)
+                Message gameStartMessage2 = new Message(Message.MessageType.GAME_START);
+                gameStartMessage2.setContent("You joined game hosted by " + hostPlayer.getUsername() + ". Your color: Black");
+                
+                // Create a Message.PlayerInfo from PlayerInfo
+                Message.PlayerInfo messagePlayerInfo2 = new Message.PlayerInfo(sender.getUsername(), sender.getPlayerInfo().getColor());
+                gameStartMessage2.setPlayerInfo(messagePlayerInfo2);
+                
+                sender.sendMessage(gameStartMessage2);
+                
+                // Log
+                System.out.println("New game started: " + sender.getUsername() + " vs " + hostPlayer.getUsername());
+                System.out.println("Game started between " + sender.getUsername() + " and " + hostPlayer.getUsername());
+                
+                // Update lobby for all other clients
+                broadcast(createLobbyUpdateMessage(), null);
+            } else {
+                // Game is full
+                Message errorMessage = new Message(Message.MessageType.JOIN_GAME);
+                errorMessage.setContent("Game is already full!");
+                sender.sendMessage(errorMessage);
+            }
         } else {
-            // Oyun bulunamadı veya dolu
-            Message errorMessage = new Message(Message.MessageType.CONNECT);
-            errorMessage.setContent("Game not found or already full.");
+            // Game not found
+            Message errorMessage = new Message(Message.MessageType.JOIN_GAME);
+            errorMessage.setContent("Game not found!");
             sender.sendMessage(errorMessage);
         }
     }
@@ -594,5 +630,27 @@ public class ChessServer {
             }
         }
         return null;
+    }
+    
+    private Message createLobbyUpdateMessage() {
+        Message lobbyUpdateMessage = new Message(Message.MessageType.GAME_LIST_RESPONSE);
+        
+        // Create a list of available games (without player2)
+        List<Message.GameInfo> availableGames = new ArrayList<>();
+        
+        for (GameSession session : gameSessions) {
+            if (session.getPlayer2() == null) {
+                // This game is still available
+                Message.GameInfo gameInfo = new Message.GameInfo(
+                    session.getSessionId(),
+                    session.getPlayer1().getUsername(),
+                    session.getTimeControl()
+                );
+                availableGames.add(gameInfo);
+            }
+        }
+        
+        lobbyUpdateMessage.setGames(availableGames);
+        return lobbyUpdateMessage;
     }
 } 

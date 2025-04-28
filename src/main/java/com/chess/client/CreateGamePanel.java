@@ -160,6 +160,9 @@ public class CreateGamePanel extends JPanel {
         cancelButton = new JButton("Cancel");
         cancelButton.setFont(new Font("Arial", Font.PLAIN, 14));
         cancelButton.setPreferredSize(new Dimension(120, 35));
+        cancelButton.setBackground(new Color(240, 240, 240));
+        cancelButton.setForeground(Color.BLACK);
+        cancelButton.setFocusPainted(false);
         cancelButton.addActionListener(e -> {
             if (createGameListener != null) {
                 createGameListener.onCancel();

@@ -190,7 +190,9 @@ public class ChessClientSwing {
         readyButton.setFont(new Font("Arial", Font.BOLD, 14));
         readyButton.setBackground(new Color(70, 130, 180));
         readyButton.setForeground(Color.WHITE);
+        readyButton.setFocusPainted(false);
         readyButton.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        readyButton.setPreferredSize(new Dimension(230, 40));
         readyButton.addActionListener(e -> {
             client.sendReadyMessage();
             readyButton.setEnabled(false);
@@ -204,9 +206,12 @@ public class ChessClientSwing {
         
         // Leave game button
         JButton leaveButton = new JButton("Leave Game");
+        leaveButton.setFont(new Font("Arial", Font.BOLD, 14));
         leaveButton.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
         leaveButton.setBackground(new Color(200, 50, 50));
         leaveButton.setForeground(Color.WHITE);
+        leaveButton.setFocusPainted(false);
+        leaveButton.setPreferredSize(new Dimension(230, 40));
         leaveButton.addActionListener(e -> leaveGame());
         rightPanel.add(Box.createVerticalStrut(10));
         rightPanel.add(leaveButton);
@@ -322,16 +327,31 @@ public class ChessClientSwing {
     
     private void createGame(String timeControl) {
         if (client != null && client.isConnected()) {
+            Message createGameMessage = new Message(Message.MessageType.CREATE_GAME);
             String gameId = UUID.randomUUID().toString();
             
-            Message createMessage = new Message(Message.MessageType.CREATE_GAME);
-            createMessage.setGameId(gameId);
-            createMessage.setTimeControl(timeControl);
-            client.sendMessage(createMessage);
+            // Oyun bilgilerini hazırla
+            Message.GameInfo gameInfo = new Message.GameInfo(
+                gameId,
+                client.getUsername(),
+                timeControl
+            );
+            createGameMessage.setGameInfo(gameInfo);
             
-            // Return to lobby screen
-            cardLayout.show(contentPanel, "lobby");
-            lobbyPanel.setStatusMessage("Game created. Waiting for an opponent...");
+            client.sendMessage(createGameMessage);
+            
+            // Oyun paneline geçiş yap ve bekleme diyalogunu göster
+            showGamePanel();
+            resetGamePanel();
+            
+            // Bekleme durumunu ayarla
+            chessBoardPanel.setLocked(true);
+            statusLabel.setText("Waiting for an opponent to join your game...");
+            readyButton.setEnabled(false);
+            readyButton.setText("Waiting for opponent...");
+            
+            // Şu anki oyun ID'sini kaydet
+            client.setCurrentGameId(gameId);
         }
     }
     

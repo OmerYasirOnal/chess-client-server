@@ -19,6 +19,7 @@ public class Message implements Serializable {
     private String gameId;
     private String timeControl;
     private List<GameInfo> games;
+    private GameInfo gameInfo;
     
     public Message() {
     }
@@ -96,6 +97,14 @@ public class Message implements Serializable {
         this.games = games;
     }
     
+    public GameInfo getGameInfo() {
+        return gameInfo;
+    }
+    
+    public void setGameInfo(GameInfo gameInfo) {
+        this.gameInfo = gameInfo;
+    }
+    
     public static class PlayerInfo implements Serializable {
         private static final long serialVersionUID = 1L;
         
@@ -123,6 +132,10 @@ public class Message implements Serializable {
         private String hostName;
         private String timeControl;
         
+        public GameInfo() {
+            // Default constructor
+        }
+        
         public GameInfo(String id, String hostName, String timeControl) {
             this.id = id;
             this.hostName = hostName;
@@ -133,12 +146,24 @@ public class Message implements Serializable {
             return id;
         }
         
+        public void setId(String id) {
+            this.id = id;
+        }
+        
         public String getHostName() {
             return hostName;
         }
         
+        public void setHostName(String hostName) {
+            this.hostName = hostName;
+        }
+        
         public String getTimeControl() {
             return timeControl;
+        }
+        
+        public void setTimeControl(String timeControl) {
+            this.timeControl = timeControl;
         }
     }
 } 

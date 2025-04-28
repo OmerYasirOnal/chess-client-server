@@ -78,7 +78,7 @@ public class LoginPanel extends JPanel {
         gbc.gridy = 1;
         formPanel.add(serverLabel, gbc);
         
-        serverField = new JTextField("localhost", 20);
+        serverField = new JTextField("141.147.25.123", 20);
         serverField.setFont(new Font("Arial", Font.PLAIN, 14));
         serverField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 200, 200)), 

@@ -22,6 +22,7 @@ public class ChessClient {
     private Thread listenerThread;
     private Consumer<Message> messageListener;
     private boolean connected;
+    private String currentGameId;
     private final Gson gson = new Gson();
     
     public ChessClient(String host, int port, String username) {
@@ -158,5 +159,13 @@ public class ChessClient {
     
     public boolean isConnected() {
         return connected;
+    }
+    
+    public String getCurrentGameId() {
+        return currentGameId;
+    }
+    
+    public void setCurrentGameId(String gameId) {
+        this.currentGameId = gameId;
     }
 } 

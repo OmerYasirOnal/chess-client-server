@@ -114,10 +114,20 @@ public class LobbyPanel extends JPanel {
         JPanel gameListButtonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         
         refreshButton = new JButton("Refresh");
+        refreshButton.setFont(new Font("Arial", Font.PLAIN, 14));
+        refreshButton.setBackground(new Color(240, 240, 240));
+        refreshButton.setForeground(Color.BLACK);
+        refreshButton.setFocusPainted(false);
+        refreshButton.setPreferredSize(new Dimension(100, 30));
         refreshButton.addActionListener(e -> refreshGameList());
         gameListButtonPanel.add(refreshButton);
         
         joinGameButton = new JButton("Join");
+        joinGameButton.setFont(new Font("Arial", Font.BOLD, 14));
+        joinGameButton.setBackground(new Color(70, 130, 180));
+        joinGameButton.setForeground(Color.WHITE);
+        joinGameButton.setFocusPainted(false);
+        joinGameButton.setPreferredSize(new Dimension(100, 30));
         joinGameButton.addActionListener(e -> joinSelectedGame());
         joinGameButton.setEnabled(false);
         gameListButtonPanel.add(joinGameButton);
@@ -182,7 +192,7 @@ public class LobbyPanel extends JPanel {
     
     private void refreshGameList() {
         // Sunucudan oyun listesini iste
-        statusLabel.setText("Oyun listesi yenileniyor...");
+        statusLabel.setText("Refreshing game list...");
         
         // Listeyi temizle
         gameListModel.clear();
@@ -197,7 +207,7 @@ public class LobbyPanel extends JPanel {
             Message requestMessage = new Message(Message.MessageType.GAME_LIST);
             client.sendMessage(requestMessage);
         } else {
-            statusLabel.setText("Sunucuya bağlantı yok! Önce giriş yapın.");
+            statusLabel.setText("Not connected to server! Please log in first.");
         }
     }
     
