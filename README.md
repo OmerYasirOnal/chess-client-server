@@ -3,15 +3,23 @@
 A multiplayer chess game implemented in Java with client-server architecture, allowing two players to play chess over a network connection.
 
 ## Current Version
-v1.1.0 - Check ChangeLog.txt for details.
+v1.4.0 - UI improvements, chess timer implementation, and drag and drop movement. See ChangeLog.txt for details.
 
 ## Features
 
 - Full implementation of standard chess rules
 - Network multiplayer functionality
-- Simple and intuitive GUI
+- Simple and intuitive GUI with enhanced visual design
 - In-game chat between players
 - Move validation and game state tracking
+- Fully functional chess timer with different time control options
+- Intuitive drag and drop piece movement
+
+## Coming in Version 1.5.0
+
+- **Game History**: View and replay past games
+- **Advanced Statistics**: Track your performance and improvement
+- **Tournament Mode**: Create and participate in online tournaments
 
 ## Technical Architecture
 
@@ -23,7 +31,7 @@ The project is built using Java and follows a client-server architecture:
 
 ## Requirements
 
-- Java Development Kit (JDK) 11 or higher
+- Java Development Kit (JDK) 17 or higher
 - Maven for dependency management and building
 
 ## Building the Project
@@ -42,7 +50,7 @@ mvn clean package
 ### Starting the Server
 
 ```bash
-java -jar target/chess-server.jar [port]
+java -jar target/chess-server-1.4.0.jar [port]
 ```
 
 The default port is 5000 if not specified.
@@ -50,7 +58,7 @@ The default port is 5000 if not specified.
 ### Starting the Client
 
 ```bash
-java -jar target/chess-client.jar [server-address] [port]
+java -jar target/chess-client-1.4.0.jar [server-address] [port]
 ```
 
 The default server address is localhost and the default port is 5000 if not specified.

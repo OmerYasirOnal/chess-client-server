@@ -1,6 +1,36 @@
 # Multiplayer Chess Application - Changelog
 
-## v1.3.0 - 2024-05-31
+## v1.4.0 - 2024-06-04
+* Complete UI/UX overhaul
+  - Implemented modern, elegant design with improved visual feedback
+  - Enhanced overall responsiveness and user experience
+  - Added visual indicators for legal moves and game states
+* Implemented chess timer functionality
+  - Added multiple time control options (blitz, rapid, classical)
+  - Implemented visual timer with low time warnings
+  - Added time controls for fair gameplay
+* Implemented drag and drop piece movement
+  - Replaced two-click selection with intuitive drag and drop
+  - Improved movement fluidity and user interaction
+  - Added visual feedback during piece movement
+* Fixed minor bugs and performance optimizations
+* Comprehensive test suite expanded and all tests passing
+* Version upgraded to 1.4.0
+
+## v1.3.5 - 2024-05-31
+* Fixed critical king movement validation bug
+  - Correctly implemented pawn attack detection for king movement validation
+  - Fixed issue where king could incorrectly move to squares attacked by enemy pawns
+  - Improved detection of squares under attack
+* Enhanced UI responsiveness after invalid moves
+  - Fixed persistent purple highlights after invalid move attempts
+  - Improved UI cleanup for a more consistent user experience
+  - Ensured board remains interactive after invalid moves
+* Updated code comments to English for better maintenance
+* All automated tests are passing
+* Version upgraded to 1.3.5
+
+## v1.3.0 - 2024-05-30
 * Fixed UI freezing bug after invalid move attempts
   - Corrected the UI state reset after invalid moves
   - Improved repaint mechanics to ensure proper rendering
@@ -32,37 +62,25 @@
 * Completed client-server architecture
 * Designed user interface
 
-## Planned Enhancements (v1.4.0)
+## Planned Enhancements (v1.5.0)
 
-### User Interface Improvements
-- [ ] Improve piece movement mechanism
-  - Current: Two-click selection and movement
-  - Target: Drag and drop support
-- [ ] Optimize board coordinate labels
-  - Current: Coordinate labels may obstruct piece visibility
-  - Target: More elegant and non-obstructive coordinate display
-
-### Game Mechanics Improvements
-- [ ] Add captured pieces display
-  - Current: Captured pieces are not displayed
-  - Target: Show each player's captured pieces in side panel
-- [ ] Add chess clock support
-  - Current: No time limits
-  - Target: Option to play with different time formats (blitz, rapid, classical)
-- [ ] Move history recording and display
-  - Current: Move history not recorded
-  - Target: Display move history in algebraic notation
+### Advanced Gameplay Features
+- [ ] Game history recording and replay
+  - Current: No game history recording
+  - Target: Save, view, and replay past games
+- [ ] Advanced player statistics
+  - Current: Basic win/loss tracking
+  - Target: Comprehensive performance metrics and analysis
+- [ ] Tournament mode
+  - Current: Single game matches only
+  - Target: Create and participate in online tournaments
 
 ### Network Improvements
 - [ ] Resume game after connection loss
 - [ ] Optimizations for server load balancing
 - [ ] Player matchmaking system
 
-## Priority Order
-1. Display of captured pieces
-2. Drag and drop piece movement
-3. Move history recording and display
-4. Board size and coordinate label improvements
-5. Adding chess clock
+## Release Timeline
+Version 1.5.0 is scheduled for August 2024.
 
 Note: These changes have not yet been implemented and will be added in future versions. 
