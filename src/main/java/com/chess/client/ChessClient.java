@@ -23,6 +23,7 @@ public class ChessClient {
     private Consumer<Message> messageListener;
     private boolean connected;
     private String currentGameId;
+    private String currentTimeControl;
     private final Gson gson = new Gson();
     
     public ChessClient(String host, int port, String username) {
@@ -167,5 +168,13 @@ public class ChessClient {
     
     public void setCurrentGameId(String gameId) {
         this.currentGameId = gameId;
+    }
+    
+    public String getCurrentTimeControl() {
+        return currentTimeControl;
+    }
+    
+    public void setCurrentTimeControl(String timeControl) {
+        this.currentTimeControl = timeControl;
     }
 } 
