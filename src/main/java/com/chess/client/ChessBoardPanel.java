@@ -42,6 +42,7 @@ public class ChessBoardPanel extends JPanel {
     private Point invalidMove = null;
     private Timer flashTimer;
     private boolean isFlashing = false;
+    private int flashCount = 0;  // Yanıp sönme sayacı
     
     // Bilgilendirme metinleri için değişkenler
     private String statusMessage = "";
@@ -69,18 +70,24 @@ public class ChessBoardPanel extends JPanel {
         
         loadPieceImages();
         
-        // Timer for flashing effect
-        flashTimer = new Timer(500, e -> {
+        // Timer for flashing effect - completely reconfigured
+        flashTimer = new Timer(300, e -> {
             isFlashing = !isFlashing;
-            repaint();
             
-            // Stop after second flash
-            if (((Timer)e.getSource()).getActionListeners()[0].hashCode() % 3 == 0) {
+            if (isFlashing) {
+                flashCount++;
+            }
+            
+            // Stop after 4 state changes (2 full flashes)
+            if (flashCount >= 4) {
                 ((Timer)e.getSource()).stop();
                 isFlashing = false;
                 invalidMove = null;
-                repaint();
+                flashCount = 0;
+                clearSelectionAndHighlights();
             }
+            
+            repaint();
         });
         
         addMouseListener(new MouseAdapter() {
@@ -131,14 +138,42 @@ public class ChessBoardPanel extends JPanel {
     }
     
     public void makeMove(ChessMove move) {
+        // Debug
+        debugUIState("makeMove-beginning");
+        
         // Save the last move
         setLastMove(move.getStartRow(), move.getStartCol(), move.getEndRow(), move.getEndCol());
         
-        chessBoard.makeMove(move);
-        selectedRow = -1;
-        selectedCol = -1;
-        validMoves.clear();
+        // Apply the move in the model
+        boolean moveSuccess = false;
+        try {
+            chessBoard.makeMove(move);
+            moveSuccess = true;
+        } catch (Exception e) {
+            System.err.println("Move could not be made: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        // Clear UI state
+        clearSelectionAndHighlights();
+        
+        // If move failed, show this
+        if (!moveSuccess) {
+            invalidMove = new Point(move.getEndRow(), move.getEndCol());
+            isFlashing = true;
+            flashTimer.restart();
+        }
+        
+        // Force a repaint to ensure UI is updated
         repaint();
+        
+        // Debug
+        debugUIState("makeMove-end");
+        
+        // Ensure UI refreshes on the Swing thread
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            repaint();
+        });
     }
     
     public void makeRemoteMove(ChessMove move) {
@@ -241,36 +276,10 @@ public class ChessBoardPanel extends JPanel {
             }
         }
         
-        // Seçili kareyi vurgula
-        if (selectedRow != -1 && selectedCol != -1) {
-            g2d.setColor(SELECTED_SQUARE_COLOR); // Sarı vurgu
-            
-            int drawRow = boardFlipped ? (BOARD_SIZE - 1 - selectedRow) : selectedRow;
-            int drawCol = boardFlipped ? (BOARD_SIZE - 1 - selectedCol) : selectedCol;
-            
-            g2d.fillRect(drawCol * SQUARE_SIZE, drawRow * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
-        }
-        
-        // Geçerli hamleleri göster
+        // Önce vurgulamaları çiz, sonra taşları
         drawValidMoveIndicators(g2d);
         
-        // Hatalı hamleleri göster (yanıp sönerek)
-        if (invalidMove != null && isFlashing) {
-            int drawRow = boardFlipped ? (BOARD_SIZE - 1 - invalidMove.x) : invalidMove.x;
-            int drawCol = boardFlipped ? (BOARD_SIZE - 1 - invalidMove.y) : invalidMove.y;
-            
-            // Daha belirgin bir kırmızı yanıp sönme efekti
-            g2d.setColor(new Color(255, 0, 0, 150)); // Kırmızı, yarı saydam
-            g2d.fillRect(drawCol * SQUARE_SIZE, drawRow * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
-            
-            // Ayrıca bir çerçeve çizelim
-            g2d.setColor(new Color(255, 0, 0));
-            g2d.setStroke(new BasicStroke(3.0f));
-            g2d.drawRect(drawCol * SQUARE_SIZE + 2, drawRow * SQUARE_SIZE + 2, 
-                         SQUARE_SIZE - 4, SQUARE_SIZE - 4);
-        }
-        
-        // Draw pieces
+        // Taşları çiz
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0; col < BOARD_SIZE; col++) {
                 ChessPiece piece = chessBoard.getPiece(row, col);
@@ -280,14 +289,15 @@ public class ChessBoardPanel extends JPanel {
             }
         }
         
-        // Draw status message (if any)
+        // Durum mesajı göster
         if (!statusMessage.isEmpty()) {
             drawStateMessage(g2d, statusMessage, statusColor);
         }
         
-        // Draw game over overlay if needed
+        // Oyun sona erdi mi kontrol et
         if (chessBoard.isGameOver()) {
-            drawGameOverOverlay(g2d, chessBoard.getGameResult());
+            String endMessage = chessBoard.getGameResult();
+            drawGameOverOverlay(g2d, endMessage);
         }
     }
     
@@ -336,26 +346,29 @@ public class ChessBoardPanel extends JPanel {
         int clickCol = e.getX() / SQUARE_SIZE;
         int clickRow = e.getY() / SQUARE_SIZE;
         
-        // Tahtanın çevrilmiş olup olmadığını kontrol et
+        // Debug output
+        debugUIState("handleMouseClick-beginning");
+        
+        // Check if the board is flipped
         if (boardFlipped) {
             clickRow = BOARD_SIZE - 1 - clickRow;
             clickCol = BOARD_SIZE - 1 - clickCol;
         }
         
-        // Eğer şu anda yanıp sönme efekti varsa, bunu durdur
+        // If there's currently a flashing effect, stop it and clear selection
         if (flashTimer.isRunning()) {
-            flashTimer.stop();
-            isFlashing = false;
-            invalidMove = null;
+            clearSelectionAndHighlights();
             repaint();
             return;
         }
         
-        // Geçerli bir kare seçili değilse ve tıklanan karede kendi taşımız varsa
+        // If no square is selected and we clicked on our own piece
         ChessPiece clickedPiece = chessBoard.getPiece(clickRow, clickCol);
         
-        // Oyuncunun sırası değilse, kırmızı yanıp sönme göster
+        // If it's not the player's turn, show red flashing
         if (chessBoard.getCurrentTurn() != playerColor) {
+            clearSelectionAndHighlights();
+            
             invalidMove = new Point(clickRow, clickCol);
             isFlashing = true;
             flashTimer.restart();
@@ -370,8 +383,13 @@ public class ChessBoardPanel extends JPanel {
                 // Taşın gidebileceği yerleri belirle
                 calculateValidMoves(clickRow, clickCol);
                 repaint();
+                
+                // Debug çıktısı
+                debugUIState("handleMouseClick-afterSelection");
             } else if (clickedPiece != null) {
                 // Rakibin taşına tıkladı - kırmızı yanıp sönme göster
+                clearSelectionAndHighlights();
+                
                 invalidMove = new Point(clickRow, clickCol);
                 isFlashing = true;
                 flashTimer.restart();
@@ -386,6 +404,9 @@ public class ChessBoardPanel extends JPanel {
                 // Taşın gidebileceği yerleri yeniden belirle
                 calculateValidMoves(clickRow, clickCol);
                 repaint();
+                
+                // Debug çıktısı
+                debugUIState("handleMouseClick-newPieceSelection");
             } 
             // Farklı bir kareye tıklandıysa, hamle yapmayı dene
             else {
@@ -405,12 +426,36 @@ public class ChessBoardPanel extends JPanel {
                     tryMove(selectedRow, selectedCol, targetMove.x, targetMove.y);
                 } else {
                     // Geçersiz hamle - kırmızı yanıp sönme efekti göster
+                    clearSelectionAndHighlights();
+                    
                     invalidMove = new Point(clickRow, clickCol);
                     isFlashing = true;
                     flashTimer.restart();
+                    
+                    // Debug çıktısı
+                    debugUIState("handleMouseClick-invalidMove");
                 }
             }
         }
+    }
+    
+    // Seçim durumunu ve vurgulamaları temizleyen yardımcı metot
+    private void clearSelectionAndHighlights() {
+        selectedRow = -1;
+        selectedCol = -1;
+        validMoves.clear();
+        invalidMove = null;
+        isFlashing = false;
+        flashCount = 0;
+        
+        if (flashTimer.isRunning()) {
+            flashTimer.stop();
+        }
+        
+        // Debug çıktısı
+        debugUIState("clearSelectionAndHighlights");
+        
+        repaint();
     }
     
     private void calculateValidMoves(int row, int col) {
@@ -423,12 +468,6 @@ public class ChessBoardPanel extends JPanel {
         
         // Şah kontrol et - şah çekilmiş mi?
         boolean isInCheck = chessBoard.isInCheck(playerColor);
-        
-        // Şah çeken taşın konumunu bul
-        Point checkingPiece = null;
-        if (isInCheck) {
-            checkingPiece = findCheckingPiece(playerColor);
-        }
         
         // Tüm potansiyel hamleleri hesapla
         List<Point> potentialMoves = new ArrayList<>();
@@ -454,373 +493,13 @@ public class ChessBoardPanel extends JPanel {
                 break;
         }
         
-        // Şah durumunda, sadece şahı kurtaran hamlelere izin ver
-        if (isInCheck) {
-            // Eğer oynanan taş şah ise, sadece güvenli karelere hareket ettirilmesine izin ver
-            if (piece.getType() == ChessPiece.PieceType.KING) {
+        // Her potansiyel hamle için, isLegalMove kullanarak yasal olup olmadığını kontrol et
+        // isLegalMove metodumuz artık şah çeken taşı yakalama gibi özel durumları da ele alıyor
                 for (Point move : potentialMoves) {
                     if (isLegalMove(row, col, move.x, move.y, playerColor)) {
                         validMoves.add(move);
-                    }
-                }
-            } 
-            // Eğer oynanan taş şah değilse
-            else {
-                for (Point move : potentialMoves) {
-                    // 1. Şah çeken taşı yeme durumu
-                    if (checkingPiece != null && move.x == checkingPiece.x && move.y == checkingPiece.y) {
-                        if (isLegalMove(row, col, move.x, move.y, playerColor)) {
-                            validMoves.add(move);
-                        }
-                    }
-                    // 2. Şah ile tehdit arasına girme durumu
-                    else if (checkingPiece != null && isBlockingCheck(row, col, move.x, move.y, playerColor)) {
-                        if (isLegalMove(row, col, move.x, move.y, playerColor)) {
-                            validMoves.add(move);
-                        }
-                    }
-                }
-            }
-        } else {
-            // Normal durumda, hamlenin şahı tehlikeye atıp atmadığını kontrol et
-            for (Point move : potentialMoves) {
-                if (isLegalMove(row, col, move.x, move.y, playerColor)) {
-                    validMoves.add(move);
-                }
             }
         }
-    }
-    
-    // Şah çeken taşın konumunu bul
-    private Point findCheckingPiece(ChessPiece.PieceColor kingColor) {
-        // Şahın konumunu bul
-        int kingRow = -1, kingCol = -1;
-        for (int row = 0; row < BOARD_SIZE; row++) {
-            for (int col = 0; col < BOARD_SIZE; col++) {
-                ChessPiece piece = chessBoard.getPiece(row, col);
-                if (piece != null && 
-                    piece.getType() == ChessPiece.PieceType.KING && 
-                    piece.getColor() == kingColor) {
-                    kingRow = row;
-                    kingCol = col;
-                    break;
-                }
-            }
-            if (kingRow != -1) break;
-        }
-        
-        if (kingRow == -1) return null; // Şah bulunamadı
-        
-        ChessPiece.PieceColor opponentColor = (kingColor == ChessPiece.PieceColor.WHITE) ? 
-                ChessPiece.PieceColor.BLACK : ChessPiece.PieceColor.WHITE;
-        
-        // Düz hatlar boyunca saldırı (yatay, dikey - kale ve vezir)
-        int[][] straightDirections = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-        for (int[] dir : straightDirections) {
-            for (int i = 1; i < BOARD_SIZE; i++) {
-                int newRow = kingRow + i * dir[0];
-                int newCol = kingCol + i * dir[1];
-                
-                if (!chessBoard.isValidPosition(newRow, newCol)) break;
-                
-                ChessPiece piece = chessBoard.getPiece(newRow, newCol);
-                if (piece != null) {
-                    if (piece.getColor() == opponentColor) {
-                        ChessPiece.PieceType type = piece.getType();
-                        if (type == ChessPiece.PieceType.ROOK || type == ChessPiece.PieceType.QUEEN) {
-                            return new Point(newRow, newCol);
-                        }
-                    }
-                    break; // Başka bir taş varsa o yöne devam etme
-                }
-            }
-        }
-        
-        // Çapraz hatlar boyunca saldırı (çapraz - fil, vezir ve piyon)
-        int[][] diagonalDirections = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
-        for (int[] dir : diagonalDirections) {
-            for (int i = 1; i < BOARD_SIZE; i++) {
-                int newRow = kingRow + i * dir[0];
-                int newCol = kingCol + i * dir[1];
-                
-                if (!chessBoard.isValidPosition(newRow, newCol)) break;
-                
-                ChessPiece piece = chessBoard.getPiece(newRow, newCol);
-                if (piece != null) {
-                    if (piece.getColor() == opponentColor) {
-                        ChessPiece.PieceType type = piece.getType();
-                        if (i == 1 && type == ChessPiece.PieceType.PAWN) {
-                            // Piyon tehdidi - piyonlar sadece karşı yöne giderken şah çekebilir
-                            // Beyaz piyon aşağıdan yukarı (dir[0] < 0) şah çeker
-                            // Siyah piyon yukarıdan aşağı (dir[0] > 0) şah çeker
-                            if ((opponentColor == ChessPiece.PieceColor.WHITE && dir[0] < 0) ||
-                                (opponentColor == ChessPiece.PieceColor.BLACK && dir[0] > 0)) {
-                                return new Point(newRow, newCol);
-                            }
-                        }
-                        if (type == ChessPiece.PieceType.BISHOP || type == ChessPiece.PieceType.QUEEN) {
-                            return new Point(newRow, newCol);
-                        }
-                    }
-                    break; // Başka bir taş varsa o yöne devam etme
-                }
-            }
-        }
-        
-        // At tehdidi kontrolü
-        int[][] knightMoves = {
-            {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2},
-            {1, -2}, {1, 2}, {2, -1}, {2, 1}
-        };
-        
-        for (int[] move : knightMoves) {
-            int newRow = kingRow + move[0];
-            int newCol = kingCol + move[1];
-            
-            if (chessBoard.isValidPosition(newRow, newCol)) {
-                ChessPiece piece = chessBoard.getPiece(newRow, newCol);
-                if (piece != null && piece.getColor() == opponentColor && 
-                    piece.getType() == ChessPiece.PieceType.KNIGHT) {
-                    return new Point(newRow, newCol);
-                }
-            }
-        }
-        
-        return null; // Şah tehdidi bulunamadı
-    }
-    
-    // Taşın korunup korunmadığını kontrol et
-    private boolean isPieceProtected(int row, int col) {
-        ChessPiece targetPiece = chessBoard.getPiece(row, col);
-        if (targetPiece == null) return false;
-        
-        ChessPiece.PieceColor pieceColor = targetPiece.getColor();
-        ChessPiece.PieceColor opponentColor = (pieceColor == ChessPiece.PieceColor.WHITE) ? 
-                ChessPiece.PieceColor.BLACK : ChessPiece.PieceColor.WHITE;
-        
-        // Geçici olarak bu taşı kaldır
-        chessBoard.setPiece(row, col, null);
-        
-        // Bu konuma rakip taş konulduğunda, kendi taşlarımızdan biri tarafından alınabilir mi kontrol et
-        boolean isProtected = false;
-        
-        // Düz hatlar (yatay, dikey)
-        int[][] straightDirections = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-        
-        // Düz hatlar üzerinde kale ve vezir koruması
-        for (int[] dir : straightDirections) {
-            for (int i = 1; i < BOARD_SIZE; i++) {
-                int newRow = row + i * dir[0];
-                int newCol = col + i * dir[1];
-                
-                if (!chessBoard.isValidPosition(newRow, newCol)) break;
-                
-                ChessPiece piece = chessBoard.getPiece(newRow, newCol);
-                if (piece != null) {
-                    if (piece.getColor() == pieceColor) {
-                        ChessPiece.PieceType type = piece.getType();
-                        if (type == ChessPiece.PieceType.ROOK || type == ChessPiece.PieceType.QUEEN ||
-                            (i == 1 && type == ChessPiece.PieceType.KING)) {
-                            isProtected = true;
-                            break;
-                        }
-                    }
-                    break; // Başka bir taş varsa o yöne devam etme
-                }
-            }
-            if (isProtected) break;
-        }
-        
-        if (!isProtected) {
-            // Çapraz hatlar
-            int[][] diagonalDirections = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
-            
-            // Çapraz hatlar üzerinde fil ve vezir koruması
-            for (int[] dir : diagonalDirections) {
-                for (int i = 1; i < BOARD_SIZE; i++) {
-                    int newRow = row + i * dir[0];
-                    int newCol = col + i * dir[1];
-                    
-                    if (!chessBoard.isValidPosition(newRow, newCol)) break;
-                    
-                    ChessPiece piece = chessBoard.getPiece(newRow, newCol);
-                    if (piece != null) {
-                        if (piece.getColor() == pieceColor) {
-                            ChessPiece.PieceType type = piece.getType();
-                            if (i == 1) {
-                                if (type == ChessPiece.PieceType.KING) {
-                                    isProtected = true;
-                                    break;
-                                }
-                                // Piyon koruması
-                                if (type == ChessPiece.PieceType.PAWN) {
-                                    if ((pieceColor == ChessPiece.PieceColor.WHITE && dir[0] < 0) ||
-                                        (pieceColor == ChessPiece.PieceColor.BLACK && dir[0] > 0)) {
-                                        isProtected = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (type == ChessPiece.PieceType.BISHOP || type == ChessPiece.PieceType.QUEEN) {
-                                isProtected = true;
-                                break;
-                            }
-                        }
-                        break; // Başka bir taş varsa o yöne devam etme
-                    }
-                }
-                if (isProtected) break;
-            }
-        }
-        
-        if (!isProtected) {
-            // At koruması kontrolü
-            int[][] knightMoves = {
-                {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2},
-                {1, -2}, {1, 2}, {2, -1}, {2, 1}
-            };
-            
-            for (int[] move : knightMoves) {
-                int newRow = row + move[0];
-                int newCol = col + move[1];
-                
-                if (chessBoard.isValidPosition(newRow, newCol)) {
-                    ChessPiece piece = chessBoard.getPiece(newRow, newCol);
-                    if (piece != null && piece.getColor() == pieceColor && 
-                        piece.getType() == ChessPiece.PieceType.KNIGHT) {
-                        isProtected = true;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Taşı geri koy
-        chessBoard.setPiece(row, col, targetPiece);
-        
-        return isProtected;
-    }
-    
-    // Hareketin şah ile şah çeken taş arasında blok oluşturup oluşturmadığını kontrol et
-    private boolean isBlockingCheck(int startRow, int startCol, int endRow, int endCol, ChessPiece.PieceColor kingColor) {
-        // Şahın yerini bul
-        int kingRow = -1, kingCol = -1;
-        for (int row = 0; row < BOARD_SIZE; row++) {
-            for (int col = 0; col < BOARD_SIZE; col++) {
-                ChessPiece piece = chessBoard.getPiece(row, col);
-                if (piece != null && 
-                    piece.getType() == ChessPiece.PieceType.KING && 
-                    piece.getColor() == kingColor) {
-                    kingRow = row;
-                    kingCol = col;
-                    break;
-                }
-            }
-            if (kingRow != -1) break;
-        }
-        
-        if (kingRow == -1) return false; // Şah bulunamadı
-        
-        // Şah çeken taşın yerini bul
-        Point checkingPiece = findCheckingPiece(kingColor);
-        if (checkingPiece == null) return false;
-        
-        // Sadece düz çizgi (kale, vezir) veya çapraz çizgi (fil, vezir) tehditleri bloklanabilir
-        // At ve piyon tehditleri bloklanamaz, doğrudan alınmalıdır
-        ChessPiece piece = chessBoard.getPiece(checkingPiece.x, checkingPiece.y);
-        if (piece.getType() == ChessPiece.PieceType.KNIGHT || piece.getType() == ChessPiece.PieceType.PAWN) {
-            return false;
-        }
-        
-        // Şah çeken taştan şaha doğru olan yolu bul
-        int rowDir = Integer.compare(kingRow - checkingPiece.x, 0);
-        int colDir = Integer.compare(kingCol - checkingPiece.y, 0);
-        
-        // Yol üzerindeki her kareyi kontrol et
-        int row = checkingPiece.x + rowDir;
-        int col = checkingPiece.y + colDir;
-        
-        while (row != kingRow || col != kingCol) {
-            if (row == endRow && col == endCol) {
-                return true; // Yol üzerinde bir blok oluşuyor
-            }
-            row += rowDir;
-            col += colDir;
-        }
-        
-        return false;
-    }
-    
-    // Hamlenin yasal olup olmadığını kontrol et (şahı tehlikeye atıyor mu)
-    private boolean isLegalMove(int startRow, int startCol, int endRow, int endCol, ChessPiece.PieceColor color) {
-        // Geçerli bir hareket olup olmadığını kontrol eder
-        ChessPiece piece = chessBoard.getPiece(startRow, startCol);
-        ChessPiece capturedPiece = chessBoard.getPiece(endRow, endCol);
-        
-        // Taşın rengi doğru mu?
-        if (piece == null || piece.getColor() != color) {
-            return false;
-        }
-        
-        // Hedef kare tahta sınırları içinde mi?
-        if (!chessBoard.isValidPosition(endRow, endCol)) {
-            return false;
-        }
-        
-        // Hedef karede kendi taşımız var mı?
-        if (capturedPiece != null && capturedPiece.getColor() == color) {
-            return false;
-        }
-        
-        // Test için hamleyi geçici olarak yap
-        // Orjinal taşları kaydet
-        ChessPiece originalPiece = piece;
-        ChessPiece originalCapturedPiece = capturedPiece;
-        
-        // Taşı geçici olarak hareket ettir
-        chessBoard.setPiece(endRow, endCol, piece);
-        chessBoard.setPiece(startRow, startCol, null);
-        
-        // Özel durum: En passant
-        ChessPiece enPassantCapturedPiece = null;
-        int enPassantRow = -1, enPassantCol = -1;
-        
-        if (piece.getType() == ChessPiece.PieceType.PAWN && 
-            startCol != endCol && 
-            capturedPiece == null) {
-            
-            // Bu bir en passant yakalama olabilir
-            enPassantRow = startRow;
-            enPassantCol = endCol;
-            enPassantCapturedPiece = chessBoard.getPiece(enPassantRow, enPassantCol);
-            
-            if (enPassantCapturedPiece != null && 
-                enPassantCapturedPiece.getType() == ChessPiece.PieceType.PAWN &&
-                chessBoard.wasLastMoveDoublePawnPush() &&
-                chessBoard.getLastPawnMoveRow() == startRow &&
-                chessBoard.getLastPawnMoveCol() == endCol) {
-                
-                // En passant ile yakalanan piyonu geçici olarak kaldır
-                chessBoard.setPiece(enPassantRow, enPassantCol, null);
-            } else {
-                enPassantCapturedPiece = null;
-            }
-        }
-        
-        // Bu hamle sonrası şahımız tehdit altında mı kontrol et
-        boolean kingInCheck = isKingUnderAttack(color);
-        
-        // Taşları eski konumlarına geri koy
-        chessBoard.setPiece(startRow, startCol, originalPiece);
-        chessBoard.setPiece(endRow, endCol, originalCapturedPiece);
-        
-        // En passant taşını geri koy
-        if (enPassantCapturedPiece != null) {
-            chessBoard.setPiece(enPassantRow, enPassantCol, enPassantCapturedPiece);
-        }
-        
-        // Eğer hamle sonrası şahımız tehlikedeyse, bu hamle yasal değil
-        return !kingInCheck;
     }
     
     private void calculatePawnMovesInternal(int row, int col, ChessPiece piece, List<Point> moves) {
@@ -1126,7 +805,8 @@ public class ChessBoardPanel extends JPanel {
     }
     
     private void drawValidMoveIndicators(Graphics2D g2d) {
-        if (!validMoves.isEmpty()) {
+        // Geçerli hamleleri çiz
+        if (!validMoves.isEmpty() && selectedRow != -1 && selectedCol != -1) {
             for (Point p : validMoves) {
                 int drawRow = boardFlipped ? (BOARD_SIZE - 1 - p.x) : p.x;
                 int drawCol = boardFlipped ? (BOARD_SIZE - 1 - p.y) : p.y;
@@ -1151,71 +831,74 @@ public class ChessBoardPanel extends JPanel {
                 }
             }
         }
+        
+        // Geçersiz hamleyi göster (mor kare)
+        if (invalidMove != null && isFlashing) {
+            int drawRow = boardFlipped ? (BOARD_SIZE - 1 - invalidMove.x) : invalidMove.x;
+            int drawCol = boardFlipped ? (BOARD_SIZE - 1 - invalidMove.y) : invalidMove.y;
+            
+            // Mor vurgu
+            g2d.setColor(new Color(128, 0, 128, 150));
+            g2d.fillRect(drawCol * SQUARE_SIZE, drawRow * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+        }
+        
+        // Seçili kareyi vurgula
+        if (selectedRow != -1 && selectedCol != -1) {
+            int drawRow = boardFlipped ? (BOARD_SIZE - 1 - selectedRow) : selectedRow;
+            int drawCol = boardFlipped ? (BOARD_SIZE - 1 - selectedCol) : selectedCol;
+            
+            g2d.setColor(SELECTED_SQUARE_COLOR);
+            g2d.fillRect(drawCol * SQUARE_SIZE, drawRow * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+        }
     }
     
     // Oyun sonu mesajını göster
     private void drawGameOverOverlay(Graphics2D g2d, String message) {
-        int width = getWidth();
-        int height = getHeight();
-        
-        // Yarı saydam arka plan
+        // Semi-transparent overlay for the whole board
         g2d.setColor(new Color(0, 0, 0, 150));
-        g2d.fillRect(0, 0, width, height);
+        g2d.fillRect(0, 0, BOARD_SIZE * SQUARE_SIZE, BOARD_SIZE * SQUARE_SIZE);
         
-        // Oyun sonucu mesajı için kutu
-        int boxWidth = 400;
-        int boxHeight = 150;
-        int boxX = (width - boxWidth) / 2;
-        int boxY = (height - boxHeight) / 2;
+        // Message box
+        int boxWidth = BOARD_SIZE * SQUARE_SIZE - 100;
+        int boxHeight = 200;
+        int boxX = 50;
+        int boxY = (BOARD_SIZE * SQUARE_SIZE - boxHeight) / 2;
         
-        // Kutu arka planı
-        g2d.setColor(new Color(255, 255, 255, 230));
+        // Box with rounded corners
+        g2d.setColor(new Color(240, 240, 240, 230));
         g2d.fillRoundRect(boxX, boxY, boxWidth, boxHeight, 20, 20);
         
-        // Kutu kenarı
-        g2d.setColor(new Color(0, 0, 0));
+        // Border
+        g2d.setColor(new Color(100, 100, 100));
         g2d.setStroke(new BasicStroke(3));
         g2d.drawRoundRect(boxX, boxY, boxWidth, boxHeight, 20, 20);
         
-        // Mesaj metni
-        g2d.setFont(new Font("Arial", Font.BOLD, 20));
+        // Title
+        g2d.setFont(new Font("Arial", Font.BOLD, 24));
         FontMetrics fm = g2d.getFontMetrics();
         
-        // Zafer, yenilgi veya beraberlik göstergesine göre renk ayarla
-        if (message.contains("kazandı")) {
-            // Kazanan oyuncu adını al
-            String winner = message.substring(0, message.indexOf(" "));
-            if (playerColor != null) {
-                if ((playerColor == ChessPiece.PieceColor.WHITE && winner.equals(chessBoard.getWhitePlayerName())) ||
-                    (playerColor == ChessPiece.PieceColor.BLACK && winner.equals(chessBoard.getBlackPlayerName()))) {
-                    // Kazanma durumu
-                    g2d.setColor(new Color(0, 150, 0));
-                    g2d.drawString("ZAFER!", boxX + (boxWidth - fm.stringWidth("ZAFER!")) / 2, boxY + 50);
-                } else {
-                    // Kaybetme durumu
-                    g2d.setColor(new Color(150, 0, 0));
-                    g2d.drawString("MAĞLUBİYET", boxX + (boxWidth - fm.stringWidth("MAĞLUBİYET")) / 2, boxY + 50);
-                }
-            } else {
-                g2d.setColor(new Color(0, 0, 150));
-                g2d.drawString("OYUN SONA ERDİ", boxX + (boxWidth - fm.stringWidth("OYUN SONA ERDİ")) / 2, boxY + 50);
-            }
-        } else if (message.contains("berabere") || message.contains("draw")) {
-            // Beraberlik durumu
+        // Different colors for different outcomes
+        if (message.contains("White wins")) {
+            g2d.setColor(new Color(0, 150, 0));
+            g2d.drawString("WHITE WINS", boxX + (boxWidth - fm.stringWidth("WHITE WINS")) / 2, boxY + 50);
+        } else if (message.contains("Black wins")) {
+            g2d.setColor(new Color(150, 0, 0));
+            g2d.drawString("BLACK WINS", boxX + (boxWidth - fm.stringWidth("BLACK WINS")) / 2, boxY + 50);
+        } else if (message.contains("Stalemate")) {
             g2d.setColor(new Color(150, 100, 0));
-            g2d.drawString("BERABERLİK", boxX + (boxWidth - fm.stringWidth("BERABERLİK")) / 2, boxY + 50);
+            g2d.drawString("DRAW", boxX + (boxWidth - fm.stringWidth("DRAW")) / 2, boxY + 50);
         } else {
-            // Diğer durumlar
+            // Other cases
             g2d.setColor(new Color(0, 0, 150));
-            g2d.drawString("OYUN SONA ERDİ", boxX + (boxWidth - fm.stringWidth("OYUN SONA ERDİ")) / 2, boxY + 50);
+            g2d.drawString("GAME OVER", boxX + (boxWidth - fm.stringWidth("GAME OVER")) / 2, boxY + 50);
         }
         
-        // Mesaj detayları
+        // Message details
         g2d.setFont(new Font("Arial", Font.PLAIN, 14));
         fm = g2d.getFontMetrics();
         g2d.setColor(Color.BLACK);
         
-        // Mesajı birden fazla satıra böl
+        // Split the message into multiple lines
         int yPos = boxY + 80;
         int lineHeight = fm.getHeight();
         String[] lines = message.split("\\. ");
@@ -1228,13 +911,13 @@ public class ChessBoardPanel extends JPanel {
     
     // Durum mesajını göster
     private void drawStateMessage(Graphics2D g2d, String message, Color color) {
-        g2d.setColor(new Color(0, 0, 0, 100)); // Hafif saydam arka plan
+        g2d.setColor(new Color(0, 0, 0, 100)); // Slightly transparent background
         g2d.fillRect(0, 0, BOARD_SIZE * SQUARE_SIZE, 30);
         
         g2d.setColor(color);
         g2d.setFont(new Font("Arial", Font.BOLD, 20));
         
-        // Metni ortala
+        // Center the text
         int textWidth = g2d.getFontMetrics().stringWidth(message);
         int x = (BOARD_SIZE * SQUARE_SIZE - textWidth) / 2;
         
@@ -1249,76 +932,368 @@ public class ChessBoardPanel extends JPanel {
     }
     
     private void tryMove(int startRow, int startCol, int endRow, int endCol) {
-        // Oyuncunun sırası mı kontrol et
+        // Debug output
+        debugUIState("tryMove-beginning");
+        
+        // Check if it's the player's turn
         if (chessBoard.getCurrentTurn() != playerColor) {
-            // Sırası değilse kırmızı yanıp sönme göster
+            // If not their turn, show red flashing
+            clearSelectionAndHighlights();
+            
             invalidMove = new Point(startRow, startCol);
             isFlashing = true;
             flashTimer.restart();
             return;
         }
         
-        // Hamleyi oluştur
-        ChessMove move = new ChessMove(startRow, startCol, endRow, endCol);
-        ChessPiece piece = chessBoard.getPiece(startRow, startCol);
-        
-        // Piyon terfisi kontrolü
-        if (piece.getType() == ChessPiece.PieceType.PAWN) {
-            if ((endRow == 0 && piece.getColor() == ChessPiece.PieceColor.WHITE) ||
-                (endRow == 7 && piece.getColor() == ChessPiece.PieceColor.BLACK)) {
+        try {
+            // Create the move
+            ChessMove move = new ChessMove(startRow, startCol, endRow, endCol);
+            ChessPiece piece = chessBoard.getPiece(startRow, startCol);
+            
+            // First check if the move is legal according to the rules
+            if (!isLegalMove(startRow, startCol, endRow, endCol, playerColor)) {
+                System.out.println("Invalid move: Does not resolve check situation.");
+                clearSelectionAndHighlights();
                 
-                // Piyon terfisi seçimini göster
-                String[] options = {"Vezir", "Kale", "Fil", "At"};
-                int choice = JOptionPane.showOptionDialog(
-                    this,
-                    "Hangi taşa terfi etmek istersiniz?",
-                    "Piyon Terfisi",
-                    JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    options,
-                    options[0]
-                );
+                invalidMove = new Point(endRow, endCol);
+                isFlashing = true;
+                flashTimer.restart();
                 
-                // Terfi tipini belirle
-                ChessPiece.PieceType promotionType;
-                switch (choice) {
-                    case 1:
-                        promotionType = ChessPiece.PieceType.ROOK;
-                        break;
-                    case 2:
-                        promotionType = ChessPiece.PieceType.BISHOP;
-                        break;
-                    case 3:
-                        promotionType = ChessPiece.PieceType.KNIGHT;
-                        break;
-                    case 0:
-                    default:
-                        promotionType = ChessPiece.PieceType.QUEEN;
-                        break;
-                }
-                
-                move.setPromotion(true);
-                move.setPromotionType(promotionType);
+                // Debug output - invalid move
+                debugUIState("tryMove-illegalMove");
+                return;
             }
+            
+            // Check for pawn promotion
+            if (piece.getType() == ChessPiece.PieceType.PAWN) {
+                if ((endRow == 0 && piece.getColor() == ChessPiece.PieceColor.WHITE) ||
+                    (endRow == 7 && piece.getColor() == ChessPiece.PieceColor.BLACK)) {
+                    
+                    // Show pawn promotion selection
+                    String[] options = {"Queen", "Rook", "Bishop", "Knight"};
+                    int choice = JOptionPane.showOptionDialog(
+                        this,
+                        "Which piece would you like to promote to?",
+                        "Pawn Promotion",
+                        JOptionPane.DEFAULT_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        options,
+                        options[0]
+                    );
+                    
+                    // Determine promotion type
+                    ChessPiece.PieceType promotionType;
+                    switch (choice) {
+                        case 1:
+                            promotionType = ChessPiece.PieceType.ROOK;
+                            break;
+                        case 2:
+                            promotionType = ChessPiece.PieceType.BISHOP;
+                            break;
+                        case 3:
+                            promotionType = ChessPiece.PieceType.KNIGHT;
+                            break;
+                        case 0:
+                        default:
+                            promotionType = ChessPiece.PieceType.QUEEN;
+                            break;
+                    }
+                    
+                    move.setPromotion(true);
+                    move.setPromotionType(promotionType);
+                }
+            }
+            
+            // Make the move on the board
+            makeMove(move);
+            
+            // Debug output - move successful
+            debugUIState("tryMove-moveSuccessful");
+            
+            // Send the move across the network (if online game)
+            if (client != null) {
+                client.sendMoveMessage(move);
+            }
+        } catch (Exception e) {
+            // If an error occurs while making the move, clear the UI state
+            System.err.println("Error while making move: " + e.getMessage());
+            e.printStackTrace();  // Print stack trace
+            
+            clearSelectionAndHighlights();
+            
+            // Debug output - error
+            debugUIState("tryMove-error");
         }
-        
-        // Hamleyi tahtada yap
-        makeMove(move);
-        
-        // Hamleyi ağ üzerinden gönder (eğer online oyunsa)
-        if (client != null) {
-            client.sendMoveMessage(move);
-        }
-        
-        // Seçimi sıfırla
-        selectedRow = -1;
-        selectedCol = -1;
-        validMoves.clear();
-        repaint();
     }
     
     public ChessPiece.PieceColor getPlayerColor() {
         return playerColor;
+    }
+    
+    // Şah çeken tüm taşların konumlarını bul
+    private List<Point> findCheckingPieces(ChessPiece.PieceColor kingColor) {
+        List<Point> checkingPieces = new ArrayList<>();
+        
+        // Şahın konumunu bul
+        int kingRow = -1, kingCol = -1;
+        for (int row = 0; row < BOARD_SIZE; row++) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                ChessPiece piece = chessBoard.getPiece(row, col);
+                if (piece != null && 
+                    piece.getType() == ChessPiece.PieceType.KING && 
+                    piece.getColor() == kingColor) {
+                    kingRow = row;
+                    kingCol = col;
+                    break;
+                }
+            }
+            if (kingRow != -1) break;
+        }
+        
+        if (kingRow == -1) return checkingPieces; // Şah bulunamadı
+        
+        ChessPiece.PieceColor opponentColor = (kingColor == ChessPiece.PieceColor.WHITE) ? 
+                ChessPiece.PieceColor.BLACK : ChessPiece.PieceColor.WHITE;
+        
+        // Düz hatlar boyunca saldırı (yatay, dikey - kale ve vezir)
+        int[][] straightDirections = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+        for (int[] dir : straightDirections) {
+            for (int i = 1; i < BOARD_SIZE; i++) {
+                int newRow = kingRow + i * dir[0];
+                int newCol = kingCol + i * dir[1];
+                
+                if (!chessBoard.isValidPosition(newRow, newCol)) break;
+                
+                ChessPiece piece = chessBoard.getPiece(newRow, newCol);
+                if (piece != null) {
+                    if (piece.getColor() == opponentColor) {
+                        ChessPiece.PieceType type = piece.getType();
+                        if (type == ChessPiece.PieceType.ROOK || type == ChessPiece.PieceType.QUEEN) {
+                            checkingPieces.add(new Point(newRow, newCol));
+                        }
+                    }
+                    break; // Başka bir taş varsa o yöne devam etme
+                }
+            }
+        }
+        
+        // Çapraz hatlar boyunca saldırı (çapraz - fil, vezir ve piyon)
+        int[][] diagonalDirections = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
+        for (int[] dir : diagonalDirections) {
+            for (int i = 1; i < BOARD_SIZE; i++) {
+                int newRow = kingRow + i * dir[0];
+                int newCol = kingCol + i * dir[1];
+                
+                if (!chessBoard.isValidPosition(newRow, newCol)) break;
+                
+                ChessPiece piece = chessBoard.getPiece(newRow, newCol);
+                if (piece != null) {
+                    if (piece.getColor() == opponentColor) {
+                        ChessPiece.PieceType type = piece.getType();
+                        if (i == 1 && type == ChessPiece.PieceType.PAWN) {
+                            // Piyon tehdidi - piyonlar sadece karşı yöne giderken şah çekebilir
+                            // Beyaz piyon aşağıdan yukarı (dir[0] < 0) şah çeker
+                            // Siyah piyon yukarıdan aşağı (dir[0] > 0) şah çeker
+                            if ((opponentColor == ChessPiece.PieceColor.WHITE && dir[0] < 0) ||
+                                (opponentColor == ChessPiece.PieceColor.BLACK && dir[0] > 0)) {
+                                checkingPieces.add(new Point(newRow, newCol));
+                            }
+                        }
+                        if (type == ChessPiece.PieceType.BISHOP || type == ChessPiece.PieceType.QUEEN) {
+                            checkingPieces.add(new Point(newRow, newCol));
+                        }
+                    }
+                    break; // Başka bir taş varsa o yöne devam etme
+                }
+            }
+        }
+        
+        // At tehdidi kontrolü
+        int[][] knightMoves = {
+            {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2},
+            {1, -2}, {1, 2}, {2, -1}, {2, 1}
+        };
+        
+        for (int[] move : knightMoves) {
+            int newRow = kingRow + move[0];
+            int newCol = kingCol + move[1];
+            
+            if (chessBoard.isValidPosition(newRow, newCol)) {
+                ChessPiece piece = chessBoard.getPiece(newRow, newCol);
+                if (piece != null && piece.getColor() == opponentColor && 
+                    piece.getType() == ChessPiece.PieceType.KNIGHT) {
+                    checkingPieces.add(new Point(newRow, newCol));
+                }
+            }
+        }
+        
+        return checkingPieces;
+    }
+    
+    // Hareketin şah ile şah çeken taş arasında blok oluşturup oluşturmadığını kontrol et
+    private boolean isBlockingCheck(int startRow, int startCol, int endRow, int endCol, ChessPiece.PieceColor kingColor) {
+        // Şahın yerini bul
+        int kingRow = -1, kingCol = -1;
+        for (int row = 0; row < BOARD_SIZE; row++) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                ChessPiece piece = chessBoard.getPiece(row, col);
+                if (piece != null && 
+                    piece.getType() == ChessPiece.PieceType.KING && 
+                    piece.getColor() == kingColor) {
+                    kingRow = row;
+                    kingCol = col;
+                    break;
+                }
+            }
+            if (kingRow != -1) break;
+        }
+        
+        if (kingRow == -1) return false; // Şah bulunamadı
+        
+        // Şah çeken taşın yerini bul
+        List<Point> checkingPieces = findCheckingPieces(kingColor);
+        if (checkingPieces.isEmpty()) return false;
+        
+        Point checkingPiece = checkingPieces.get(0);
+        
+        // Sadece düz çizgi (kale, vezir) veya çapraz çizgi (fil, vezir) tehditleri bloklanabilir
+        // At ve piyon tehditleri bloklanamaz, doğrudan alınmalıdır
+        ChessPiece piece = chessBoard.getPiece(checkingPiece.x, checkingPiece.y);
+        if (piece == null || piece.getType() == ChessPiece.PieceType.KNIGHT || piece.getType() == ChessPiece.PieceType.PAWN) {
+            return false;
+        }
+        
+        // Şah çeken taştan şaha doğru olan yolu bul
+        int rowDir = Integer.compare(kingRow - checkingPiece.x, 0);
+        int colDir = Integer.compare(kingCol - checkingPiece.y, 0);
+        
+        // Yol üzerindeki her kareyi kontrol et
+        int row = checkingPiece.x + rowDir;
+        int col = checkingPiece.y + colDir;
+        
+        while (row != kingRow || col != kingCol) {
+            if (row == endRow && col == endCol) {
+                return true; // Yol üzerinde bir blok oluşuyor
+            }
+            row += rowDir;
+            col += colDir;
+        }
+        
+        return false;
+    }
+    
+    // Hamlenin yasal olup olmadığını kontrol et (şahı tehlikeye atıyor mu)
+    private boolean isLegalMove(int startRow, int startCol, int endRow, int endCol, ChessPiece.PieceColor color) {
+        // Geçerli bir hareket olup olmadığını kontrol eder
+        ChessPiece piece = chessBoard.getPiece(startRow, startCol);
+        ChessPiece capturedPiece = chessBoard.getPiece(endRow, endCol);
+        
+        // Taşın rengi doğru mu?
+        if (piece == null || piece.getColor() != color) {
+            return false;
+        }
+        
+        // Hedef kare tahta sınırları içinde mi?
+        if (!chessBoard.isValidPosition(endRow, endCol)) {
+            return false;
+        }
+        
+        // Hedef karede kendi taşımız var mı?
+        if (capturedPiece != null && capturedPiece.getColor() == color) {
+            return false;
+        }
+        
+        // Eğer şah çekme durumu varsa ve hedef kare şah çeken taş ise, 
+        // şah çeken taşı yakalamak her zaman yasal bir hamledir (pin durumu dahil)
+        if (chessBoard.isInCheck(color)) {
+            List<Point> checkingPieces = findCheckingPieces(color);
+            for (Point checkingPiece : checkingPieces) {
+                if (checkingPiece.x == endRow && checkingPiece.y == endCol) {
+                    // Bu bir şah çeken taşı yakalama hamlesi
+                    // Test için hamleyi geçici olarak yap
+                    ChessPiece originalPiece = piece;
+                    ChessPiece originalCapturedPiece = capturedPiece;
+                    
+                    // Taşı geçici olarak hareket ettir
+                    chessBoard.setPiece(endRow, endCol, piece);
+                    chessBoard.setPiece(startRow, startCol, null);
+                    
+                    // Bu hamle sonrası şahımız tehdit altında mı kontrol et
+                    boolean kingInCheck = isKingUnderAttack(color);
+                    
+                    // Taşları eski konumlarına geri koy
+                    chessBoard.setPiece(startRow, startCol, originalPiece);
+                    chessBoard.setPiece(endRow, endCol, originalCapturedPiece);
+                    
+                    // Eğer hamle sonrası şahımız tehlikede değilse, bu yasal bir hamledir
+                    return !kingInCheck;
+                }
+            }
+        }
+        
+        // Test için hamleyi geçici olarak yap
+        // Orjinal taşları kaydet
+        ChessPiece originalPiece = piece;
+        ChessPiece originalCapturedPiece = capturedPiece;
+        
+        // Taşı geçici olarak hareket ettir
+        chessBoard.setPiece(endRow, endCol, piece);
+        chessBoard.setPiece(startRow, startCol, null);
+        
+        // Özel durum: En passant
+        ChessPiece enPassantCapturedPiece = null;
+        int enPassantRow = -1, enPassantCol = -1;
+        
+        if (piece.getType() == ChessPiece.PieceType.PAWN && 
+            startCol != endCol && 
+            capturedPiece == null) {
+            
+            // Bu bir en passant yakalama olabilir
+            enPassantRow = startRow;
+            enPassantCol = endCol;
+            enPassantCapturedPiece = chessBoard.getPiece(enPassantRow, enPassantCol);
+            
+            if (enPassantCapturedPiece != null && 
+                enPassantCapturedPiece.getType() == ChessPiece.PieceType.PAWN &&
+                chessBoard.wasLastMoveDoublePawnPush() &&
+                chessBoard.getLastPawnMoveRow() == startRow &&
+                chessBoard.getLastPawnMoveCol() == endCol) {
+                
+                // En passant ile yakalanan piyonu geçici olarak kaldır
+                chessBoard.setPiece(enPassantRow, enPassantCol, null);
+            } else {
+                enPassantCapturedPiece = null;
+            }
+        }
+        
+        // Bu hamle sonrası şahımız tehdit altında mı kontrol et
+        boolean kingInCheck = isKingUnderAttack(color);
+        
+        // Taşları eski konumlarına geri koy
+        chessBoard.setPiece(startRow, startCol, originalPiece);
+        chessBoard.setPiece(endRow, endCol, originalCapturedPiece);
+        
+        // En passant taşını geri koy
+        if (enPassantCapturedPiece != null) {
+            chessBoard.setPiece(enPassantRow, enPassantCol, enPassantCapturedPiece);
+        }
+        
+        // Eğer hamle sonrası şahımız tehlikedeyse, bu hamle yasal değil
+        return !kingInCheck;
+    }
+    
+    // Debug için yardımcı fonksiyon
+    private void debugUIState(String context) {
+        System.out.println("==== DEBUG (" + context + ") ====");
+        System.out.println("selectedRow: " + selectedRow);
+        System.out.println("selectedCol: " + selectedCol);
+        System.out.println("validMoves: " + validMoves.size());
+        System.out.println("invalidMove: " + invalidMove);
+        System.out.println("isFlashing: " + isFlashing);
+        System.out.println("flashTimer running: " + flashTimer.isRunning());
+        System.out.println("flashCount: " + flashCount);
+        System.out.println("==============");
     }
 } 

@@ -6,7 +6,7 @@
 
     <groupId>com.chess</groupId>
     <artifactId>chess-game</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -27,13 +27,13 @@
             <artifactId>javafx-fxml</artifactId>
             <version>17.0.2</version>
         </dependency>
-        <!-- JSON işleme için -->
+        <!-- JSON processing -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
-        <!-- JUnit için -->
+        <!-- JUnit for testing -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -82,7 +82,7 @@
                                     <mainClass>com.chess.server.ChessServer</mainClass>
                                 </transformer>
                             </transformers>
-                            <finalName>chess-server-1.2.0</finalName>
+                            <finalName>chess-server-1.3.0</finalName>
                         </configuration>
                     </execution>
                     <execution>
@@ -96,7 +96,7 @@
                                     <mainClass>com.chess.client.ChessClientSwing</mainClass>
                                 </transformer>
                             </transformers>
-                            <finalName>chess-client-1.2.0</finalName>
+                            <finalName>chess-client-1.3.0</finalName>
                         </configuration>
                     </execution>
                 </executions>
