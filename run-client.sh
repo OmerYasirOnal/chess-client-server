@@ -7,4 +7,4 @@ mvn clean package -DskipTests
 
 echo "Starting Chess Client..."
 echo "Server: 141.147.25.123:9999"
-java -jar target/chess-client-1.4.0.jar 
+java -jar target/chess-client-1.5.0.jar 
