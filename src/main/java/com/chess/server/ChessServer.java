@@ -405,7 +405,7 @@ public class ChessServer {
         private ClientHandler player2;
         private final ChessBoard chessBoard;
         private String sessionId;
-        private String timeControl;
+        private String gameType;
         
         public GameSession(ClientHandler player1, ClientHandler player2) {
             this.player1 = player1;
@@ -455,12 +455,12 @@ public class ChessServer {
             this.sessionId = sessionId;
         }
         
-        public String getTimeControl() {
-            return timeControl;
+        public String getGameType() {
+            return gameType;
         }
         
-        public void setTimeControl(String timeControl) {
-            this.timeControl = timeControl;
+        public void setGameType(String gameType) {
+            this.gameType = gameType;
         }
     }
     
@@ -474,7 +474,7 @@ public class ChessServer {
                 Message.GameInfo gameInfo = new Message.GameInfo(
                         session.getSessionId(),
                         session.getPlayer1().getUsername(),
-                        session.getTimeControl()
+                        session.getGameType()
                 );
                 gameInfos.add(gameInfo);
             }
@@ -491,16 +491,16 @@ public class ChessServer {
         // GameInfo nesnesinden bilgileri al
         Message.GameInfo gameInfo = null;
         String gameId = null;
-        String timeControl = null;
+        String gameType = null;
         
         if (message.getGameInfo() != null) {
             gameInfo = message.getGameInfo();
             gameId = gameInfo.getId();
-            timeControl = gameInfo.getTimeControl();
+            gameType = gameInfo.getGameType();
         } else {
             // Eski yöntem (geriye dönük uyumluluk için)
             gameId = message.getGameId();
-            timeControl = message.getTimeControl();
+            gameType = message.getGameType();
         }
         
         // ID null ise, UUID oluştur
@@ -517,7 +517,7 @@ public class ChessServer {
         // Yeni oyun oturumu oluştur (sadece bir oyuncu ile)
         GameSession gameSession = new GameSession(sender, null);
         gameSession.setSessionId(gameId);
-        gameSession.setTimeControl(timeControl);
+        gameSession.setGameType(gameType);
         gameSessions.add(gameSession);
         
         // Oyuncu rengi atama
@@ -625,7 +625,7 @@ public class ChessServer {
                 Message.GameInfo gameInfo = new Message.GameInfo(
                     session.getSessionId(),
                     session.getPlayer1().getUsername(),
-                    session.getTimeControl()
+                    session.getGameType()
                 );
                 availableGames.add(gameInfo);
             }

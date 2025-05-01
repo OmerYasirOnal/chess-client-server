@@ -24,7 +24,7 @@ public class WaitingRoomPanel extends JPanel {
     
     private JLabel statusLabel;
     private JLabel gameIdLabel;
-    private JLabel timeControlLabel;
+    private JLabel gameTypeLabel;
     private JButton leaveButton;
     private JLabel opponentNameLabel;
     
@@ -77,13 +77,13 @@ public class WaitingRoomPanel extends JPanel {
         gameIdLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         gameInfoPanel.add(gameIdLabel);
         
-        JLabel timeControlTitleLabel = new JLabel("Game Type:");
-        timeControlTitleLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        gameInfoPanel.add(timeControlTitleLabel);
+        JLabel gameTypeTitleLabel = new JLabel("Game Type:");
+        gameTypeTitleLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        gameInfoPanel.add(gameTypeTitleLabel);
         
-        timeControlLabel = new JLabel("Standard");
-        timeControlLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        gameInfoPanel.add(timeControlLabel);
+        gameTypeLabel = new JLabel("Standard");
+        gameTypeLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        gameInfoPanel.add(gameTypeLabel);
         
         contentPanel.add(gameInfoPanel, gbc);
         
@@ -149,9 +149,9 @@ public class WaitingRoomPanel extends JPanel {
         return panel;
     }
     
-    public void setGameInfo(String gameId, String timeControl) {
+    public void setGameInfo(String gameId, String gameType) {
         gameIdLabel.setText(gameId != null ? gameId : "...");
-        timeControlLabel.setText("Standard");
+        gameTypeLabel.setText("Standard");
     }
     
     public void setStatusMessage(String message) {

@@ -141,7 +141,7 @@ public class LobbyPanel extends JPanel {
                 new Font("Arial", Font.BOLD, 14)));
         
         // Create the table model with column names
-        String[] columnNames = {"Host", "Game Type", "Time Control", "Created At"};
+        String[] columnNames = {"Host", "Game Type", "Created At"};
         gameTableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -446,13 +446,13 @@ public class LobbyPanel extends JPanel {
     }
     
     public void updateGameList(List<GameInfo> games) {
-        // Clear the table
-        gameTableModel.setRowCount(0);
         availableGames = games;
         
-        // Check if there are any games
+        // Clear existing table data
+        gameTableModel.setRowCount(0);
+        
         if (games.isEmpty()) {
-            // Show empty state
+            // Show empty state if no games available
             if (gameTable.getParent() instanceof JScrollPane) {
                 JScrollPane scrollPane = (JScrollPane) gameTable.getParent().getParent();
                 scrollPane.getParent().add(emptyGamesPanel, BorderLayout.CENTER);
@@ -460,24 +460,24 @@ public class LobbyPanel extends JPanel {
                 emptyGamesPanel.setVisible(true);
             }
         } else {
-            // Populate the table
-            SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
-            
+            // Populate table with game data
             for (GameInfo game : games) {
                 String host = game.getHostName();
-                // Determine game type based on time control
-                String timeControl = game.getTimeControl();
-                String gameType = determineGameType(timeControl);
+                String gameType = "Standard";
                 
                 // Format creation time
-                Date creationDate = new Date(game.getCreationTime());
-                String createdAt = dateFormat.format(creationDate);
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+                String creationTime = sdf.format(new Date(game.getCreationTime()));
                 
-                // Add to table
-                gameTableModel.addRow(new Object[]{host, gameType, timeControl, createdAt});
+                // Add row to table
+                gameTableModel.addRow(new Object[]{
+                    host,
+                    gameType,
+                    creationTime
+                });
             }
             
-            // Show table
+            // Show table and hide empty state
             if (gameTable.getParent() instanceof JScrollPane) {
                 JScrollPane scrollPane = (JScrollPane) gameTable.getParent().getParent();
                 if (!scrollPane.isVisible()) {
@@ -491,21 +491,12 @@ public class LobbyPanel extends JPanel {
                 java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
     }
     
+    // Helper method to determine the game type from time control
     private String determineGameType(String timeControl) {
-        if (timeControl == null) return "Standard";
-        
-        String[] parts = timeControl.split("\\+");
-        if (parts.length != 2) return "Standard";
-        
-        try {
-            int minutes = Integer.parseInt(parts[0]);
-            
-            if (minutes <= 5) return "Blitz";
-            if (minutes <= 30) return "Rapid";
-            return "Classical";
-        } catch (NumberFormatException e) {
+        if (timeControl == null || timeControl.isEmpty()) {
             return "Standard";
         }
+        return "Standard";
     }
     
     private void joinSelectedGame() {
@@ -518,10 +509,12 @@ public class LobbyPanel extends JPanel {
         }
     }
     
+    /**
+     * Create game with specified time control
+     */
     private void createGameWithTimeControl(String timeControl) {
-        // Call the listener to create a game
         if (lobbyListener != null) {
-            lobbyListener.onCreateGame(timeControl);
+            lobbyListener.onCreateGame("Standard");
         }
     }
     
@@ -549,21 +542,24 @@ public class LobbyPanel extends JPanel {
     }
     
     public interface LobbyListener {
-        void onCreateGame(String timeControl);
+        void onCreateGame(String gameType);
         void onJoinGame(GameInfo game);
         void onLogout();
     }
     
+    /**
+     * Game information container class
+     */
     public static class GameInfo {
         private String id;
         private String hostName;
-        private String timeControl;
+        private String gameType;
         private long creationTime;
         
-        public GameInfo(String id, String hostName, String timeControl) {
+        public GameInfo(String id, String hostName, String gameType) {
             this.id = id;
             this.hostName = hostName;
-            this.timeControl = timeControl;
+            this.gameType = gameType;
             this.creationTime = System.currentTimeMillis();
         }
         
@@ -575,8 +571,8 @@ public class LobbyPanel extends JPanel {
             return hostName;
         }
         
-        public String getTimeControl() {
-            return timeControl;
+        public String getGameType() {
+            return gameType;
         }
         
         public long getCreationTime() {
@@ -585,7 +581,7 @@ public class LobbyPanel extends JPanel {
         
         @Override
         public String toString() {
-            return hostName + " - " + timeControl;
+            return "Game hosted by: " + hostName;
         }
     }
 } 

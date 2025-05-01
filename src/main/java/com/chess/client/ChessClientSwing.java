@@ -90,8 +90,8 @@ public class ChessClientSwing {
         lobbyPanel = new LobbyPanel(client);
         lobbyPanel.setLobbyListener(new LobbyPanel.LobbyListener() {
             @Override
-            public void onCreateGame(String timeControl) {
-                createGame(timeControl);
+            public void onCreateGame(String gameType) {
+                createGame(gameType);
             }
             
             @Override
@@ -120,8 +120,8 @@ public class ChessClientSwing {
             createGamePanel = new CreateGamePanel();
             createGamePanel.setCreateGameListener(new CreateGamePanel.CreateGameListener() {
                 @Override
-                public void onCreateGame(String timeControl) {
-                    createGame(timeControl);
+                public void onCreateGame(String gameType) {
+                    createGame(gameType);
                 }
                 
                 @Override
@@ -315,7 +315,7 @@ public class ChessClientSwing {
                         gameInfos.add(new com.chess.client.LobbyPanel.GameInfo(
                                 game.getId(), 
                                 game.getHostName(), 
-                                game.getTimeControl()));
+                                game.getGameType()));
                     }
                     lobbyPanel.updateGameList(gameInfos);
                 }
@@ -325,7 +325,7 @@ public class ChessClientSwing {
         }
     }
     
-    private void createGame(String timeControl) {
+    private void createGame(String gameType) {
         if (client != null && client.isConnected()) {
             Message createGameMessage = new Message(Message.MessageType.CREATE_GAME);
             String gameId = UUID.randomUUID().toString();
@@ -334,7 +334,7 @@ public class ChessClientSwing {
             Message.GameInfo gameInfo = new Message.GameInfo(
                 gameId,
                 client.getUsername(),
-                timeControl
+                gameType
             );
             createGameMessage.setGameInfo(gameInfo);
             

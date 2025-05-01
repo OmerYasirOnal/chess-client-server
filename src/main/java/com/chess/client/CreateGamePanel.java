@@ -80,7 +80,7 @@ public class CreateGamePanel extends JDialog {
         add(contentPanel, BorderLayout.CENTER);
     }
     
-    public String getSelectedTimeControl() {
+    public String getSelectedGameType() {
         // Always return standard since we removed time controls
         return "standard";
     }
@@ -90,7 +90,7 @@ public class CreateGamePanel extends JDialog {
     }
     
     public interface CreateGameListener {
-        void onCreateGame(String timeControl);
+        void onCreateGame(String gameType);
         void onCancel();
     }
 } 

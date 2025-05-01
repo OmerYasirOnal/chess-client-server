@@ -90,8 +90,8 @@ public class MainFrame extends JFrame {
             
             lobbyPanel.setLobbyListener(new LobbyPanel.LobbyListener() {
                 @Override
-                public void onCreateGame(String timeControl) {
-                    createGame(timeControl);
+                public void onCreateGame(String gameType) {
+                    createGame(gameType);
                 }
                 
                 @Override
@@ -122,7 +122,7 @@ public class MainFrame extends JFrame {
         cardLayout.show(contentPanel, LOBBY_PANEL);
     }
     
-    public void showWaitingRoomPanel(String gameId, String timeControl) {
+    public void showWaitingRoomPanel(String gameId, String gameType) {
         if (waitingRoomPanel == null) {
             waitingRoomPanel = new WaitingRoomPanel();
             
@@ -139,7 +139,7 @@ public class MainFrame extends JFrame {
         }
         
         // Update waiting room info
-        waitingRoomPanel.setGameInfo(gameId, timeControl);
+        waitingRoomPanel.setGameInfo(gameId, gameType);
         
         // Set message listener for waiting room
         client.setMessageListener(this::handleWaitingRoomMessage);
@@ -175,7 +175,7 @@ public class MainFrame extends JFrame {
                             LobbyPanel.GameInfo lobbyGameInfo = new LobbyPanel.GameInfo(
                                     gameInfo.getId(),
                                     gameInfo.getHostName(),
-                                    gameInfo.getTimeControl());
+                                    gameInfo.getGameType());
                             gameInfoList.add(lobbyGameInfo);
                         }
                     }
@@ -271,30 +271,29 @@ public class MainFrame extends JFrame {
         });
     }
     
-    private void createGame(String timeControl) {
+    private void createGame(String gameType) {
         if (client != null && client.isConnected()) {
             // Generate a unique game ID
             String gameId = java.util.UUID.randomUUID().toString();
             
             // Send create game message to server
             Message createGameMessage = new Message(Message.MessageType.CREATE_GAME);
-            createGameMessage.setContent(timeControl);
+            createGameMessage.setContent(gameType);
             createGameMessage.setSender(client.getUsername());
             createGameMessage.setGameId(gameId);
             client.sendMessage(createGameMessage);
             
-            // Store the game ID and time control
+            // Store the game ID
             client.setCurrentGameId(gameId);
-            client.setCurrentTimeControl(timeControl);
             
             // Show waiting room
-            showWaitingRoomPanel(gameId, timeControl);
+            showWaitingRoomPanel(gameId, gameType);
         }
     }
     
     private void joinGame(String gameId) {
         if (client != null && client.isConnected()) {
-            // Find the game in the lobby's list to get the time control
+            // Find the game in the lobby's list to get the game type
             LobbyPanel.GameInfo gameInfo = null;
             if (lobbyPanel != null) {
                 for (LobbyPanel.GameInfo game : lobbyPanel.getAvailableGames()) {
@@ -314,14 +313,9 @@ public class MainFrame extends JFrame {
             // Store the game ID
             client.setCurrentGameId(gameId);
             
-            // Store the time control if found
-            if (gameInfo != null) {
-                client.setCurrentTimeControl(gameInfo.getTimeControl());
-            }
-            
             // Show waiting room - we'll transition to game when we get the GAME_START message
-            String timeControl = (gameInfo != null) ? gameInfo.getTimeControl() : "";
-            showWaitingRoomPanel(gameId, timeControl);
+            String gameType = (gameInfo != null) ? gameInfo.getGameType() : "Standard";
+            showWaitingRoomPanel(gameId, gameType);
         }
     }
     

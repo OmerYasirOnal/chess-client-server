@@ -33,7 +33,6 @@ public class GamePanel extends JPanel {
     private JPanel playersPanel;
     private JLabel gameStatusLabel;
     private JLabel turnLabel;
-    private JButton readyButton;
     private JTextArea moveHistoryArea;
     
     private ChessPiece.PieceColor playerColor = ChessPiece.PieceColor.WHITE;

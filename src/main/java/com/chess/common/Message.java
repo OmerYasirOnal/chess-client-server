@@ -17,7 +17,7 @@ public class Message implements Serializable {
     private ChessMove move;
     private PlayerInfo playerInfo;
     private String gameId;
-    private String timeControl;
+    private String gameType;
     private List<GameInfo> games;
     private GameInfo gameInfo;
     
@@ -81,12 +81,12 @@ public class Message implements Serializable {
         this.gameId = gameId;
     }
     
-    public String getTimeControl() {
-        return timeControl;
+    public String getGameType() {
+        return gameType;
     }
     
-    public void setTimeControl(String timeControl) {
-        this.timeControl = timeControl;
+    public void setGameType(String gameType) {
+        this.gameType = gameType;
     }
     
     public List<GameInfo> getGames() {
@@ -130,16 +130,16 @@ public class Message implements Serializable {
         
         private String id;
         private String hostName;
-        private String timeControl;
+        private String gameType;
         
         public GameInfo() {
             // Default constructor
         }
         
-        public GameInfo(String id, String hostName, String timeControl) {
+        public GameInfo(String id, String hostName, String gameType) {
             this.id = id;
             this.hostName = hostName;
-            this.timeControl = timeControl;
+            this.gameType = gameType;
         }
         
         public String getId() {
@@ -158,12 +158,12 @@ public class Message implements Serializable {
             this.hostName = hostName;
         }
         
-        public String getTimeControl() {
-            return timeControl;
+        public String getGameType() {
+            return gameType;
         }
         
-        public void setTimeControl(String timeControl) {
-            this.timeControl = timeControl;
+        public void setGameType(String gameType) {
+            this.gameType = gameType;
         }
     }
 } 
