@@ -2,6 +2,7 @@ package com.chess.client;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Frame;
 import java.awt.Point;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,12 +26,14 @@ import com.chess.common.Message;
 public class ChessBoardInvalidMoveUITest extends AssertJSwingJUnitTestCase {
     
     private FrameFixture window;
-    private MainFrame frame;
+    private ChessClientSwing client;
+    private Frame frame;
     
     @Override
     protected void onSetUp() {
         // Launch the application on EDT and wrap it in a FrameFixture
-        frame = GuiActionRunner.execute(() -> new MainFrame());
+        client = GuiActionRunner.execute(() -> new ChessClientSwing());
+        frame = client.getFrame();
         window = new FrameFixture(robot(), frame);
         window.show();
         window.robot().settings().componentLookupScope(ComponentLookupScope.ALL);
@@ -183,29 +186,23 @@ public class ChessBoardInvalidMoveUITest extends AssertJSwingJUnitTestCase {
             gameStartMessage.setContent("Your opponent: TestOpponent. Your color: White");
             gameStartMessage.setSender("TestOpponent");
             
+            WaitingRoomPanel waitingRoom = findWaitingRoomPanel(frame);
+            if (waitingRoom != null) {
+                waitingRoom.setOpponentName("TestOpponent");
+            }
+            
             // Force the transition to the game panel
-            if (frame instanceof MainFrame) {
-                WaitingRoomPanel waitingRoom = findWaitingRoomPanel(frame);
-                if (waitingRoom != null) {
-                    waitingRoom.setOpponentName("TestOpponent");
-                }
+            try {
+                client.showGamePanelForTesting();
                 
-                MainFrame mainFrame = (MainFrame) frame;
-                try {
-                    java.lang.reflect.Method startGameMethod = 
-                            MainFrame.class.getDeclaredMethod("startGame", String.class);
-                    startGameMethod.setAccessible(true);
-                    startGameMethod.invoke(mainFrame, "test-game-id");
-                    
-                    // Set player color to white
-                    GamePanel gamePanel = findGamePanel(frame);
-                    if (gamePanel != null) {
-                        gamePanel.setPlayerColor(ChessPiece.PieceColor.WHITE);
-                        gamePanel.showGameStartMessage("Game started with opponent");
-                    }
-                } catch (Exception e) {
-                    System.err.println("Failed to start game: " + e.getMessage());
+                // Set player color to white
+                GamePanel gamePanel = findGamePanel(frame);
+                if (gamePanel != null) {
+                    gamePanel.setPlayerColor(ChessPiece.PieceColor.WHITE);
+                    gamePanel.showGameStartMessage("Game started with opponent");
                 }
+            } catch (Exception e) {
+                System.err.println("Failed to start game: " + e.getMessage());
             }
         });
         
@@ -248,7 +245,7 @@ public class ChessBoardInvalidMoveUITest extends AssertJSwingJUnitTestCase {
             }
             
             if (component instanceof Container) {
-                WaitingRoomPanel found = findWaitingRoomPanel((Container)component);
+                WaitingRoomPanel found = findWaitingRoomPanel((Container) component);
                 if (found != null) {
                     return found;
                 }
@@ -270,7 +267,7 @@ public class ChessBoardInvalidMoveUITest extends AssertJSwingJUnitTestCase {
             }
             
             if (component instanceof Container) {
-                GamePanel found = findGamePanel((Container)component);
+                GamePanel found = findGamePanel((Container) component);
                 if (found != null) {
                     return found;
                 }
@@ -281,12 +278,11 @@ public class ChessBoardInvalidMoveUITest extends AssertJSwingJUnitTestCase {
     }
     
     /**
-     * Get the center point of a chess square
+     * Get the center position of a chess square
      */
     private Point getSquareCenter(ChessBoardPanel boardPanel, int row, int col) {
         int squareSize = boardPanel.getWidth() / 8;
-        int x = col * squareSize + squareSize / 2;
-        int y = row * squareSize + squareSize / 2;
-        return new Point(x, y);
+        // Add an offset to make sure we're clicking in the center of the square
+        return new Point(col * squareSize + squareSize / 2, row * squareSize + squareSize / 2);
     }
 } 

@@ -2,13 +2,11 @@ package com.chess.client;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -18,11 +16,7 @@ import java.util.Date;
 import java.util.List;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -31,7 +25,6 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -241,185 +234,36 @@ public class LobbyPanel extends JPanel {
     
     private JPanel createCreateGameTab() {
         JPanel createGamePanel = new JPanel(new BorderLayout());
-        createGamePanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        createGamePanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         
-        // Presets panel
-        JPanel presetsPanel = new JPanel(new BorderLayout());
-        presetsPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(), 
-                "Game Presets", 
-                TitledBorder.LEFT, 
-                TitledBorder.TOP,
-                new Font("Arial", Font.BOLD, 14)));
+        // Simple panel with a central "Create Game" button
+        JPanel centerPanel = new JPanel(new GridBagLayout());
         
-        JPanel instructionPanel = new JPanel(new BorderLayout());
-        instructionPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
+        JLabel instructionLabel = new JLabel("Click the button below to create a new standard chess game");
+        instructionLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        instructionLabel.setHorizontalAlignment(SwingConstants.CENTER);
         
-        JLabel instructionLabel = new JLabel("<html>Select a preset or create a custom game with your preferred time control.</html>");
-        instructionLabel.setFont(new Font("Arial", Font.ITALIC, 14));
-        instructionPanel.add(instructionLabel, BorderLayout.CENTER);
-        
-        presetsPanel.add(instructionPanel, BorderLayout.NORTH);
-        
-        // 3x3 grid of presets
-        JPanel gridPanel = new JPanel(new GridLayout(3, 3, 10, 10));
-        gridPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
-        
-        // Game type labels
-        String[] gameTypes = {"Blitz", "Rapid", "Classical"};
-        
-        // Time control settings (minutes + increment)
-        String[][] timeControls = {
-            {"3+2", "5+0", "10+5"},     // Blitz options
-            {"15+10", "20+0", "30+0"},  // Rapid options
-            {"45+45", "60+30", "90+30"} // Classical options
-        };
-        
-        // Create 3x3 grid of preset buttons
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 3; col++) {
-                final String gameType = gameTypes[row];
-                final String timeControl = timeControls[row][col];
-                
-                JPanel presetPanel = new JPanel();
-                presetPanel.setLayout(new BoxLayout(presetPanel, BoxLayout.Y_AXIS));
-                presetPanel.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
-                presetPanel.setBackground(new Color(250, 250, 250));
-                
-                JLabel typeLabel = new JLabel(gameType);
-                typeLabel.setFont(new Font("Arial", Font.BOLD, 16));
-                typeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-                typeLabel.setBorder(new EmptyBorder(10, 5, 5, 5));
-                
-                JLabel timeLabel = new JLabel(timeControl);
-                timeLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-                timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-                
-                JButton createButton = new JButton("Create");
-                createButton.setName("createButton_" + timeControl.replace('+', '_'));
-                createButton.setFont(new Font("Arial", Font.BOLD, 14));
-                createButton.setBackground(new Color(70, 130, 180));
-                createButton.setForeground(Color.WHITE);
-                createButton.setFocusPainted(false);
-                createButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-                createButton.setMaximumSize(new Dimension(100, 30));
-                createButton.setBorder(new EmptyBorder(5, 15, 5, 15));
-                createButton.addActionListener(e -> createGameWithTimeControl(timeControl));
-                
-                presetPanel.add(Box.createVerticalStrut(10));
-                presetPanel.add(typeLabel);
-                presetPanel.add(Box.createVerticalStrut(5));
-                presetPanel.add(timeLabel);
-                presetPanel.add(Box.createVerticalStrut(15));
-                presetPanel.add(createButton);
-                presetPanel.add(Box.createVerticalStrut(10));
-                
-                gridPanel.add(presetPanel);
-            }
-        }
-        
-        presetsPanel.add(gridPanel, BorderLayout.CENTER);
-        
-        // Custom game button
-        JPanel customPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        customPanel.setBorder(new EmptyBorder(10, 0, 20, 0));
-        
-        JButton customButton = new JButton("Custom Game...");
-        customButton.setName("customGameButton");
-        customButton.setFont(new Font("Arial", Font.BOLD, 16));
-        customButton.setBackground(new Color(70, 130, 180));
-        customButton.setForeground(Color.WHITE);
-        customButton.setFocusPainted(false);
-        customButton.setPreferredSize(new Dimension(180, 40));
-        customButton.addActionListener(e -> showCustomGameDialog());
-        
-        customPanel.add(customButton);
-        presetsPanel.add(customPanel, BorderLayout.SOUTH);
-        
-        createGamePanel.add(presetsPanel, BorderLayout.CENTER);
-        
-        return createGamePanel;
-    }
-    
-    private void showCustomGameDialog() {
-        // Find the parent frame for the dialog
-        JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
-        JDialog customDialog = new JDialog(parentFrame, "Custom Game", true);
-        customDialog.setLayout(new BorderLayout());
-        customDialog.setSize(400, 300);
-        customDialog.setLocationRelativeTo(this);
-        
-        JPanel contentPanel = new JPanel(new GridBagLayout());
-        contentPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        JButton createGameButton = new JButton("Create Game");
+        createGameButton.setName("createStandardGameButton");
+        createGameButton.setFont(new Font("Arial", Font.BOLD, 18));
+        createGameButton.setBackground(new Color(70, 130, 180));
+        createGameButton.setForeground(Color.WHITE);
+        createGameButton.setFocusPainted(false);
+        createGameButton.setPreferredSize(new Dimension(200, 50));
+        createGameButton.addActionListener(e -> createGameWithTimeControl("standard"));
         
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.gridwidth = GridBagConstraints.REMAINDER;
+        gbc.insets = new Insets(10, 0, 30, 0);
         
-        // Title
-        JLabel titleLabel = new JLabel("Custom Time Control");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 3;
-        contentPanel.add(titleLabel, gbc);
+        centerPanel.add(instructionLabel, gbc);
         
-        // Minutes
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        gbc.gridwidth = 1;
-        JLabel minutesLabel = new JLabel("Minutes:");
-        minutesLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        contentPanel.add(minutesLabel, gbc);
+        gbc.insets = new Insets(30, 0, 10, 0);
+        centerPanel.add(createGameButton, gbc);
         
-        gbc.gridx = 1;
-        Integer[] minutes = {1, 2, 3, 5, 7, 10, 15, 20, 30, 45, 60, 90, 120};
-        javax.swing.JComboBox<Integer> minutesCombo = new javax.swing.JComboBox<>(minutes);
-        minutesCombo.setName("minutesComboBox");
-        minutesCombo.setSelectedItem(7); // Default 7 minutes
-        contentPanel.add(minutesCombo, gbc);
+        createGamePanel.add(centerPanel, BorderLayout.CENTER);
         
-        // Increment
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        JLabel incrementLabel = new JLabel("Increment (seconds):");
-        incrementLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        contentPanel.add(incrementLabel, gbc);
-        
-        gbc.gridx = 1;
-        Integer[] increments = {0, 1, 2, 3, 5, 10, 15, 20, 30, 45, 60};
-        javax.swing.JComboBox<Integer> incrementCombo = new javax.swing.JComboBox<>(increments);
-        incrementCombo.setName("incrementComboBox");
-        incrementCombo.setSelectedItem(5); // Default to 5 seconds increment 
-        contentPanel.add(incrementCombo, gbc);
-        
-        // Buttons
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        
-        JButton cancelButton = new JButton("Cancel");
-        cancelButton.setName("cancelButton");
-        cancelButton.setFont(new Font("Arial", Font.PLAIN, 14));
-        cancelButton.addActionListener(e -> customDialog.dispose());
-        buttonPanel.add(cancelButton);
-        
-        JButton createButton = new JButton("Create Game");
-        createButton.setName("createCustomGameButton");
-        createButton.setFont(new Font("Arial", Font.BOLD, 14));
-        createButton.setBackground(new Color(70, 130, 180));
-        createButton.setForeground(Color.WHITE);
-        createButton.setFocusPainted(false);
-        createButton.addActionListener(e -> {
-            int selectedMinutes = (Integer) minutesCombo.getSelectedItem();
-            int selectedIncrement = (Integer) incrementCombo.getSelectedItem();
-            String timeControl = selectedMinutes + "+" + selectedIncrement;
-            customDialog.dispose();
-            createGameWithTimeControl(timeControl);
-        });
-        buttonPanel.add(createButton);
-        
-        customDialog.add(contentPanel, BorderLayout.CENTER);
-        customDialog.add(buttonPanel, BorderLayout.SOUTH);
-        customDialog.setVisible(true);
+        return createGamePanel;
     }
     
     private void refreshGameList() {
@@ -463,7 +307,7 @@ public class LobbyPanel extends JPanel {
             // Populate table with game data
             for (GameInfo game : games) {
                 String host = game.getHostName();
-                String gameType = "Standard";
+                String gameType = "standard";
                 
                 // Format creation time
                 SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
@@ -493,10 +337,8 @@ public class LobbyPanel extends JPanel {
     
     // Helper method to determine the game type from time control
     private String determineGameType(String timeControl) {
-        if (timeControl == null || timeControl.isEmpty()) {
-            return "Standard";
-        }
-        return "Standard";
+        // Always return standard type
+        return "standard";
     }
     
     private void joinSelectedGame() {
@@ -510,11 +352,13 @@ public class LobbyPanel extends JPanel {
     }
     
     /**
-     * Create game with specified time control
+     * Create game with specified time control - this now ignores the timeControl parameter
+     * and always creates a standard chess game
      */
     private void createGameWithTimeControl(String timeControl) {
+        // Always create a standard game regardless of the timeControl parameter
         if (lobbyListener != null) {
-            lobbyListener.onCreateGame("Standard");
+            lobbyListener.onCreateGame("standard");
         }
     }
     

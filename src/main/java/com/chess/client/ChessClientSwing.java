@@ -491,6 +491,17 @@ public class ChessClientSwing {
         }
     }
 
+    public JFrame getFrame() {
+        return frame;
+    }
+
+    /**
+     * Expose the showGamePanel method for testing
+     */
+    public void showGamePanelForTesting() {
+        showGamePanel();
+    }
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             new ChessClientSwing();

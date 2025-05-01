@@ -2,6 +2,7 @@ package com.chess.client;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Frame;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -25,12 +26,14 @@ import com.chess.common.Message;
 public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
     
     private FrameFixture window;
-    private MainFrame frame;
+    private ChessClientSwing client;
+    private Frame frame;
     
     @Override
     protected void onSetUp() {
         // Launch the application on EDT and wrap it in a FrameFixture
-        frame = GuiActionRunner.execute(() -> new MainFrame());
+        client = GuiActionRunner.execute(() -> new ChessClientSwing());
+        frame = client.getFrame();
         window = new FrameFixture(robot(), frame);
         window.show();
         window.robot().settings().componentLookupScope(ComponentLookupScope.ALL);
@@ -125,10 +128,7 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
             
             // Force the transition to the game panel
             try {
-                java.lang.reflect.Method startGameMethod = 
-                        MainFrame.class.getDeclaredMethod("startGame", String.class);
-                startGameMethod.setAccessible(true);
-                startGameMethod.invoke(frame, "test-game-id");
+                client.showGamePanelForTesting();
                 
                 // Set player color to white
                 GamePanel gamePanel = findGamePanel(frame);
@@ -269,7 +269,7 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
     }
     
     /**
-     * Find the WaitingRoomPanel
+     * Find the waiting room panel
      */
     private WaitingRoomPanel findWaitingRoomPanel(Container container) {
         if (container == null) return null;
@@ -280,7 +280,7 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
             }
             
             if (component instanceof Container) {
-                WaitingRoomPanel found = findWaitingRoomPanel((Container)component);
+                WaitingRoomPanel found = findWaitingRoomPanel((Container) component);
                 if (found != null) {
                     return found;
                 }
@@ -291,7 +291,7 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
     }
     
     /**
-     * Find the GamePanel
+     * Find the game panel
      */
     private GamePanel findGamePanel(Container container) {
         if (container == null) return null;
@@ -302,7 +302,7 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
             }
             
             if (component instanceof Container) {
-                GamePanel found = findGamePanel((Container)component);
+                GamePanel found = findGamePanel((Container) component);
                 if (found != null) {
                     return found;
                 }
