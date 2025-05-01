@@ -3,7 +3,7 @@
 A multiplayer chess game implemented in Java with client-server architecture, allowing two players to play chess over a network connection.
 
 ## Current Version
-v1.4.0 - UI improvements, chess timer implementation, and drag and drop movement. See ChangeLog.txt for details.
+v1.5.0 - Removed time control mechanism and implemented auto-start game feature. Games now start automatically when a second player joins, without requiring ready status.
 
 ## Features
 
@@ -12,14 +12,63 @@ v1.4.0 - UI improvements, chess timer implementation, and drag and drop movement
 - Simple and intuitive GUI with enhanced visual design
 - In-game chat between players
 - Move validation and game state tracking
-- Fully functional chess timer with different time control options
 - Intuitive drag and drop piece movement
+- Auto-start when second player joins
 
-## Coming in Version 1.5.0
+## How to Play with Multiple Clients
 
-- **Game History**: View and replay past games
-- **Advanced Statistics**: Track your performance and improvement
-- **Tournament Mode**: Create and participate in online tournaments
+You can play the game with two chess clients, either on the same computer or on different computers:
+
+### Option 1: Playing on the Same Computer (Local Testing)
+
+1. Start the server:
+   ```bash
+   ./run-server-localhost.sh
+   ```
+
+2. Start the first client:
+   ```bash
+   ./run-client-localhost.sh
+   ```
+   
+3. Start the second client:
+   ```bash
+   ./run-client-localhost.sh
+   ```
+
+4. In each client:
+   - Enter a different username
+   - Connect to `localhost` with port `9999`
+   - The first player creates a game, the second player joins it
+
+### Option 2: Playing Over the Internet
+
+1. Connect to the remote server:
+   ```bash
+   ./run-client.sh
+   ```
+
+2. In the login screen:
+   - Enter your username
+   - Use the server IP `141.147.25.123` with port `9999`
+   - Click "Connect"
+
+3. Follow the same steps on another computer to join the game
+
+## Game Flow
+
+1. **Login**: Connect to the server with your username
+2. **Create or Join a Game**: 
+   - Create a new game from the lobby
+   - Or join an existing game from the list
+3. **Playing the Game**:
+   - The game starts automatically when the second player joins
+   - White moves first
+   - Make valid chess moves by clicking or dragging pieces
+   - Chat with your opponent using the chat panel
+4. **Game End**:
+   - Game ends by checkmate, stalemate, resignation, or disconnection
+   - Return to lobby to start a new game
 
 ## Technical Architecture
 
@@ -50,18 +99,29 @@ mvn clean package
 ### Starting the Server
 
 ```bash
-java -jar target/chess-server-1.4.0.jar [port]
+# Using the provided script
+./run-server.sh
+
+# Or manually
+java -jar target/chess-server-1.5.0.jar
 ```
 
-The default port is 5000 if not specified.
+The server runs on port 9999 by default.
 
 ### Starting the Client
 
 ```bash
-java -jar target/chess-client-1.4.0.jar [server-address] [port]
+# Using the provided script
+./run-client.sh
+
+# Or manually
+java -jar target/chess-client-1.5.0.jar
 ```
 
-The default server address is localhost and the default port is 5000 if not specified.
+When the client starts, you'll need to enter:
+- Your username
+- Server address (localhost or remote IP)
+- Port number (default: 9999)
 
 ## Screenshots
 
