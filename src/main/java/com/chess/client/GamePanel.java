@@ -1,15 +1,11 @@
 package com.chess.client;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
-import java.lang.reflect.Method;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -18,9 +14,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 
-import com.chess.common.ChessBoard;
 import com.chess.common.ChessMove;
 import com.chess.common.ChessPiece;
 import com.chess.common.Message;
@@ -41,16 +35,6 @@ public class GamePanel extends JPanel {
     private JLabel turnLabel;
     private JButton readyButton;
     private JTextArea moveHistoryArea;
-    
-    // Timer components
-    private JLabel whiteTimerLabel;
-    private JLabel blackTimerLabel;
-    private javax.swing.Timer whiteTimer;
-    private javax.swing.Timer blackTimer;
-    private int whiteTimeRemaining; // in seconds
-    private int blackTimeRemaining; // in seconds
-    private int incrementSeconds;
-    private boolean timerRunning = false;
     
     private ChessPiece.PieceColor playerColor = ChessPiece.PieceColor.WHITE;
     
@@ -73,174 +57,91 @@ public class GamePanel extends JPanel {
     
     private void createSidePanel() {
         sidePanel = new JPanel();
-        sidePanel.setLayout(new BoxLayout(sidePanel, BoxLayout.Y_AXIS));
-        sidePanel.setPreferredSize(new Dimension(250, 0));
+        sidePanel.setLayout(new BorderLayout(0, 10));
+        sidePanel.setPreferredSize(new Dimension(300, 600));
         sidePanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
         
-        // Player information
+        // Players panel at the top of side panel
         createPlayersPanel();
-        sidePanel.add(playersPanel);
-        sidePanel.add(Box.createVerticalStrut(15));
+        sidePanel.add(playersPanel, BorderLayout.NORTH);
         
-        // Game status
-        gameStatusLabel = new JLabel("Game Not Started");
-        gameStatusLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        gameStatusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidePanel.add(gameStatusLabel);
-        
-        turnLabel = new JLabel("Waiting...");
-        turnLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        turnLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidePanel.add(turnLabel);
-        sidePanel.add(Box.createVerticalStrut(15));
-        
-        // Ready button
-        readyButton = new JButton("Ready");
-        readyButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-        readyButton.addActionListener(e -> {
-            client.sendReadyMessage();
-            readyButton.setEnabled(false);
-        });
-        sidePanel.add(readyButton);
-        sidePanel.add(Box.createVerticalStrut(15));
-        
-        // Move history
-        JLabel historyLabel = new JLabel("Move History");
-        historyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidePanel.add(historyLabel);
-        
-        moveHistoryArea = new JTextArea();
-        moveHistoryArea.setEditable(false);
-        moveHistoryArea.setLineWrap(true);
-        moveHistoryArea.setWrapStyleWord(true);
-        moveHistoryArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        
-        JScrollPane historyScroll = new JScrollPane(moveHistoryArea);
-        historyScroll.setPreferredSize(new Dimension(250, 150));
-        historyScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidePanel.add(historyScroll);
-        sidePanel.add(Box.createVerticalStrut(15));
-        
-        // Chat Area
-        JLabel chatLabel = new JLabel("Chat");
-        chatLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidePanel.add(chatLabel);
+        // Chat panel in the middle of side panel
+        JPanel chatPanel = new JPanel(new BorderLayout(0, 5));
+        chatPanel.setBorder(BorderFactory.createTitledBorder("Chat"));
         
         chatArea = new JTextArea();
         chatArea.setEditable(false);
         chatArea.setLineWrap(true);
         chatArea.setWrapStyleWord(true);
-        chatArea.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        JScrollPane chatScrollPane = new JScrollPane(chatArea);
+        chatScrollPane.setPreferredSize(new Dimension(250, 250));
+        chatPanel.add(chatScrollPane, BorderLayout.CENTER);
         
-        JScrollPane chatScroll = new JScrollPane(chatArea);
-        chatScroll.setPreferredSize(new Dimension(250, 200));
-        chatScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidePanel.add(chatScroll);
-        
-        // Message sending area
-        JPanel chatInputPanel = new JPanel();
-        chatInputPanel.setLayout(new BoxLayout(chatInputPanel, BoxLayout.X_AXIS));
-        chatInputPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        chatInputPanel.setMaximumSize(new Dimension(Short.MAX_VALUE, 30));
-        
+        JPanel chatInputPanel = new JPanel(new BorderLayout(5, 0));
         chatInput = new JTextField();
         chatInput.addActionListener(e -> sendChatMessage());
+        chatInputPanel.add(chatInput, BorderLayout.CENTER);
         
         sendButton = new JButton("Send");
         sendButton.addActionListener(e -> sendChatMessage());
+        chatInputPanel.add(sendButton, BorderLayout.EAST);
         
-        chatInputPanel.add(chatInput);
-        chatInputPanel.add(Box.createHorizontalStrut(5));
-        chatInputPanel.add(sendButton);
+        chatPanel.add(chatInputPanel, BorderLayout.SOUTH);
+        sidePanel.add(chatPanel, BorderLayout.CENTER);
         
-        sidePanel.add(Box.createVerticalStrut(5));
-        sidePanel.add(chatInputPanel);
+        // Move history panel at the bottom of side panel
+        JPanel moveHistoryPanel = new JPanel(new BorderLayout());
+        moveHistoryPanel.setBorder(BorderFactory.createTitledBorder("Move History"));
+        
+        moveHistoryArea = new JTextArea();
+        moveHistoryArea.setEditable(false);
+        moveHistoryArea.setLineWrap(true);
+        moveHistoryArea.setWrapStyleWord(true);
+        JScrollPane moveHistoryScrollPane = new JScrollPane(moveHistoryArea);
+        moveHistoryScrollPane.setPreferredSize(new Dimension(250, 150));
+        moveHistoryPanel.add(moveHistoryScrollPane, BorderLayout.CENTER);
+        
+        sidePanel.add(moveHistoryPanel, BorderLayout.SOUTH);
     }
     
     private void createPlayersPanel() {
         playersPanel = new JPanel();
         playersPanel.setLayout(new BoxLayout(playersPanel, BoxLayout.Y_AXIS));
-        playersPanel.setBorder(BorderFactory.createTitledBorder("Players"));
-        playersPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        playersPanel.setBorder(BorderFactory.createTitledBorder("Game Information"));
         
-        // White player panel
-        JPanel whitePlayerPanel = createPlayerPanel("White", "...");
-        JPanel blackPlayerPanel = createPlayerPanel("Black", "...");
+        // Game status
+        JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        statusPanel.add(new JLabel("Status:"));
+        gameStatusLabel = new JLabel("Waiting for game to start...");
+        statusPanel.add(gameStatusLabel);
+        playersPanel.add(statusPanel);
         
-        // Add timer labels
-        whiteTimerLabel = new JLabel("--:--");
-        whiteTimerLabel.setName("whiteTimerLabel");
-        whiteTimerLabel.setFont(new Font("Monospaced", Font.BOLD, 16));
-        whiteTimerLabel.setHorizontalAlignment(JLabel.CENTER);
-        whiteTimerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        whiteTimerLabel.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0));
+        // Turn information
+        JPanel turnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        turnPanel.add(new JLabel("Turn:"));
+        turnLabel = new JLabel("Waiting for game to start...");
+        turnPanel.add(turnLabel);
+        playersPanel.add(turnPanel);
         
-        blackTimerLabel = new JLabel("--:--");
-        blackTimerLabel.setName("blackTimerLabel");
-        blackTimerLabel.setFont(new Font("Monospaced", Font.BOLD, 16));
-        blackTimerLabel.setHorizontalAlignment(JLabel.CENTER);
-        blackTimerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        blackTimerLabel.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0));
-        
-        whitePlayerPanel.add(whiteTimerLabel);
-        blackPlayerPanel.add(blackTimerLabel);
-        
+        // Player information
+        JPanel whitePlayerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        whitePlayerPanel.add(new JLabel("White:"));
+        JLabel whitePlayerLabel = new JLabel(client.getUsername());
+        whitePlayerPanel.add(whitePlayerLabel);
         playersPanel.add(whitePlayerPanel);
-        playersPanel.add(Box.createVerticalStrut(10));
+        
+        JPanel blackPlayerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        blackPlayerPanel.add(new JLabel("Black:"));
+        JLabel blackPlayerLabel = new JLabel("Opponent");
+        blackPlayerPanel.add(blackPlayerLabel);
         playersPanel.add(blackPlayerPanel);
-    }
-    
-    private JPanel createPlayerPanel(String colorName, String playerName) {
-        JPanel playerPanel = new JPanel();
-        playerPanel.setLayout(new BoxLayout(playerPanel, BoxLayout.Y_AXIS));
-        playerPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel colorLabel = new JLabel(colorName);
-        colorLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        colorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel nameLabel = new JLabel(playerName);
-        nameLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        playerPanel.add(colorLabel);
-        playerPanel.add(nameLabel);
-        
-        return playerPanel;
-    }
-    
-    private void createBottomPanel() {
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        
-        JButton resignButton = new JButton("Resign");
-        resignButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(
-                this, 
-                "Are you sure you want to resign?", 
-                "Confirm Resignation", 
-                JOptionPane.YES_NO_OPTION
-            );
-            
-            if (confirm == JOptionPane.YES_OPTION) {
-                client.sendResignMessage();
-            }
-        });
-        
-        JButton drawButton = new JButton("Offer Draw");
-        drawButton.addActionListener(e -> {
-            client.sendDrawOfferMessage();
-        });
-        
-        bottomPanel.add(drawButton);
-        bottomPanel.add(resignButton);
-        
-        add(bottomPanel, BorderLayout.SOUTH);
     }
     
     private void sendChatMessage() {
         String message = chatInput.getText().trim();
         if (!message.isEmpty()) {
             client.sendChatMessage(message);
+            addChatMessage("You", message);
             chatInput.setText("");
         }
     }
@@ -258,193 +159,72 @@ public class GamePanel extends JPanel {
         // Reset the board to the starting position
         boardPanel.resetBoard();
         
-        // Initialize and start the chess timer
-        initializeChessTimer();
-        
         // Add info message to chat
         addChatMessage("System", message);
     }
     
-    /**
-     * Initialize and start the chess timer based on time control
-     */
-    private void initializeChessTimer() {
-        // Parse time control (format: minutes+increment)
-        String timeControlStr = client.getCurrentTimeControl();
-        if (timeControlStr == null || timeControlStr.isEmpty()) {
-            timeControlStr = "5+0"; // Default 5 minutes, no increment
-        }
+    public void updateTurnDisplay(ChessPiece.PieceColor currentTurn) {
+        boolean isPlayerTurn = (currentTurn == playerColor);
+        String turnText = isPlayerTurn ? 
+                (playerColor == ChessPiece.PieceColor.WHITE ? "White (You)" : "Black (You)") :
+                (playerColor == ChessPiece.PieceColor.WHITE ? "Black (Opponent)" : "White (Opponent)");
         
-        String[] parts = timeControlStr.split("\\+");
-        int minutes = Integer.parseInt(parts[0]);
-        incrementSeconds = (parts.length > 1) ? Integer.parseInt(parts[1]) : 0;
+        turnLabel.setText(turnText + " to move");
+    }
+    
+    public void setPlayerColor(ChessPiece.PieceColor color) {
+        this.playerColor = color;
+        boardPanel.setPlayerColor(color);
+    }
+    
+    private void createBottomPanel() {
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         
-        // Set initial times
-        whiteTimeRemaining = minutes * 60;
-        blackTimeRemaining = minutes * 60;
-        
-        // Update timer displays
-        updateTimerDisplay(whiteTimerLabel, whiteTimeRemaining);
-        updateTimerDisplay(blackTimerLabel, blackTimeRemaining);
-        
-        // Create white player timer
-        whiteTimer = new javax.swing.Timer(1000, e -> {
-            whiteTimeRemaining--;
-            updateTimerDisplay(whiteTimerLabel, whiteTimeRemaining);
+        JButton resignButton = new JButton("Resign");
+        resignButton.addActionListener(e -> {
+            int result = JOptionPane.showConfirmDialog(
+                    this,
+                    "Are you sure you want to resign?",
+                    "Resign Confirmation",
+                    JOptionPane.YES_NO_OPTION);
             
-            if (whiteTimeRemaining <= 0) {
-                whiteTimer.stop();
-                handleTimeUp(ChessPiece.PieceColor.WHITE);
+            if (result == JOptionPane.YES_OPTION) {
+                client.sendResignMessage();
+                showGameEndMessage("You resigned. Game over.");
             }
         });
+        bottomPanel.add(resignButton);
         
-        // Create black player timer
-        blackTimer = new javax.swing.Timer(1000, e -> {
-            blackTimeRemaining--;
-            updateTimerDisplay(blackTimerLabel, blackTimeRemaining);
-            
-            if (blackTimeRemaining <= 0) {
-                blackTimer.stop();
-                handleTimeUp(ChessPiece.PieceColor.BLACK);
-            }
+        JButton drawButton = new JButton("Offer Draw");
+        drawButton.addActionListener(e -> {
+            client.sendDrawOfferMessage();
+            addChatMessage("System", "You offered a draw. Waiting for opponent to accept or decline.");
         });
+        bottomPanel.add(drawButton);
         
-        // Start the white timer (white moves first)
-        startPlayerTimer(ChessPiece.PieceColor.WHITE);
-        timerRunning = true;
-    }
-    
-    /**
-     * Update the timer display with the given time in seconds
-     */
-    private void updateTimerDisplay(JLabel timerLabel, int timeInSeconds) {
-        int minutes = timeInSeconds / 60;
-        int seconds = timeInSeconds % 60;
-        timerLabel.setText(String.format("%d:%02d", minutes, seconds));
-        
-        // Change color to red if less than 30 seconds
-        if (timeInSeconds < 30) {
-            timerLabel.setForeground(Color.RED);
-        } else {
-            timerLabel.setForeground(Color.BLACK);
-        }
-    }
-    
-    /**
-     * Start the timer for the specified player and stop the opponent's timer
-     */
-    private void startPlayerTimer(ChessPiece.PieceColor color) {
-        if (!timerRunning) return;
-        
-        if (color == ChessPiece.PieceColor.WHITE) {
-            blackTimer.stop();
-            whiteTimer.start();
-        } else {
-            whiteTimer.stop();
-            blackTimer.start();
-        }
-    }
-    
-    /**
-     * Handle when a player's time runs out
-     */
-    private void handleTimeUp(ChessPiece.PieceColor color) {
-        String message = color == ChessPiece.PieceColor.WHITE 
-                ? "Time's up! White loses."
-                : "Time's up! Black loses.";
-        
-        boolean playerLost = color == playerColor;
-        message = playerLost ? "Time's up! You lost" : "Time's up! You won";
-        
-        showGameEndMessage(message);
-    }
-    
-    /**
-     * Apply increment after a player makes a move
-     */
-    private void applyIncrement(ChessPiece.PieceColor color) {
-        if (incrementSeconds > 0) {
-            if (color == ChessPiece.PieceColor.WHITE) {
-                whiteTimeRemaining += incrementSeconds;
-                updateTimerDisplay(whiteTimerLabel, whiteTimeRemaining);
-            } else {
-                blackTimeRemaining += incrementSeconds;
-                updateTimerDisplay(blackTimerLabel, blackTimeRemaining);
-            }
-        }
+        add(bottomPanel, BorderLayout.SOUTH);
     }
     
     public void showGameEndMessage(String message) {
         gameStatusLabel.setText("Game Over");
         
-        // Add to chat history
-        addChatMessage("System", "Game over: " + message);
+        // Disable move making
+        boardPanel.setLocked(true);
         
-        // Show game end dialog
-        String dialogMessage = "Game over: " + message + "\nWhat would you like to do?";
+        // Add message to chat
+        addChatMessage("System", message);
         
-        // Stop the timers if they're running
-        if (whiteTimer != null) whiteTimer.stop();
-        if (blackTimer != null) blackTimer.stop();
-        
-        // Show game end dialog with options
-        SwingUtilities.invokeLater(() -> {
-            Object[] options = {"Play Again", "Return to Lobby", "Exit"};
-            int choice = JOptionPane.showOptionDialog(
-                this,
-                dialogMessage,
-                "Game Ended",
-                JOptionPane.YES_NO_CANCEL_OPTION,
-                JOptionPane.INFORMATION_MESSAGE,
-                null,
-                options,
-                options[0]
-            );
-            
-            // Handle user choice
-            if (choice == 0) {
-                // Play Again - Create a new game with the same time control
-                if (client != null) {
-                    String timeControl = client.getCurrentTimeControl();
-                    if (timeControl == null || timeControl.isEmpty()) {
-                        timeControl = "5+0"; // Default
-                    }
-                    
-                    // Get the parent MainFrame
-                    MainFrame mainFrame = (MainFrame) SwingUtilities.getWindowAncestor(this);
-                    if (mainFrame != null) {
-                        mainFrame.showLobbyPanel();
-                        // Use reflection to access the private createGame method
-                        try {
-                            Method createGameMethod = MainFrame.class.getDeclaredMethod("createGame", String.class);
-                            createGameMethod.setAccessible(true);
-                            createGameMethod.invoke(mainFrame, timeControl);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            } else if (choice == 1) {
-                // Return to Lobby
-                MainFrame mainFrame = (MainFrame) SwingUtilities.getWindowAncestor(this);
-                if (mainFrame != null) {
-                    mainFrame.showLobbyPanel();
-                }
-            } else {
-                // Exit the application
-                System.exit(0);
-            }
-        });
+        // Show dialog
+        JOptionPane.showMessageDialog(this, message, "Game Over", JOptionPane.INFORMATION_MESSAGE);
     }
     
-    public void showDisconnectMessage(String message) {
-        JOptionPane.showMessageDialog(
-            this,
-            message,
-            "Disconnection",
-            JOptionPane.WARNING_MESSAGE
-        );
-        ((MainFrame) SwingUtilities.getWindowAncestor(this)).showLoginPanel();
+    public void addMoveToHistory(String move) {
+        moveHistoryArea.append(move + "\n");
+        moveHistoryArea.setCaretPosition(moveHistoryArea.getDocument().getLength());
+    }
+    
+    public ChessBoardPanel getBoardPanel() {
+        return boardPanel;
     }
     
     public void handleMoveMessage(Message message) {
@@ -478,15 +258,8 @@ public class GamePanel extends JPanel {
                         message.getSender().equals(client.getUsername()) ? 
                         playerColor : getOpponentColor();
                 
-                // Apply increment to the player who just moved
-                applyIncrement(moveMadeBy);
-                
-                // Switch timer to the other player
-                startPlayerTimer(getOpponentColor(moveMadeBy));
-                
                 // Update turn label
-                boolean isPlayerTurn = getCurrentTurnColor() == playerColor;
-                turnLabel.setText(isPlayerTurn ? "Your turn" : "Opponent's turn");
+                updateTurnDisplay(moveMadeBy);
             }
         } catch (Exception e) {
             System.err.println("Error processing move: " + e.getMessage());
@@ -541,42 +314,8 @@ public class GamePanel extends JPanel {
         }
     }
     
-    private void addMoveToHistory(String moveStr) {
-        moveHistoryArea.append(moveStr + "\n");
-        moveHistoryArea.setCaretPosition(moveHistoryArea.getDocument().getLength());
-    }
-    
-    public void resetGame() {
-        // Reset board
-        boardPanel.resetBoard();
-        boardPanel.setLocked(false);
-        
-        // Reset game status
-        gameStatusLabel.setText("Waiting for Players");
-        turnLabel.setText("Waiting...");
-        
-        // Enable ready button
-        readyButton.setEnabled(true);
-    }
-    
-    public void setPlayerColor(ChessPiece.PieceColor color) {
-        this.playerColor = color;
-        boardPanel.setPlayerColor(color);
-    }
-    
-    private ChessPiece.PieceColor getCurrentTurnColor() {
-        // Determine current turn color based on the board state
-        ChessBoard board = boardPanel.getBoard();
-        return board.isWhiteTurn() ? ChessPiece.PieceColor.WHITE : ChessPiece.PieceColor.BLACK;
-    }
-    
     private ChessPiece.PieceColor getOpponentColor() {
         return playerColor == ChessPiece.PieceColor.WHITE ? 
-                ChessPiece.PieceColor.BLACK : ChessPiece.PieceColor.WHITE;
-    }
-    
-    private ChessPiece.PieceColor getOpponentColor(ChessPiece.PieceColor color) {
-        return color == ChessPiece.PieceColor.WHITE ? 
                 ChessPiece.PieceColor.BLACK : ChessPiece.PieceColor.WHITE;
     }
 } 

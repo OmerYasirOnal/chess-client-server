@@ -245,12 +245,6 @@ public class ChessServer {
     }
     
     private void startGame(GameSession gameSession) {
-        // Her iki oyuncunun da hazır olduğundan emin ol
-        if (!gameSession.isAllPlayersReady()) {
-            System.out.println("Not starting game - both players are not ready yet.");
-            return; // Her iki oyuncu da hazır değilse, oyunu başlatma
-        }
-        
         // Initialize the game board
         ChessBoard board = gameSession.getChessBoard();
         
@@ -554,72 +548,59 @@ public class ChessServer {
     
     // Var olan bir oyuna katıl
     private void handleJoinGame(Message message, ClientHandler sender) {
+        // Find the game session by ID
         String gameId = message.getGameId();
-        
-        // Check if this client is already in a game
-        if (isClientInGame(sender)) {
-            Message errorMessage = new Message(Message.MessageType.JOIN_GAME);
-            errorMessage.setContent("You are already in a game!");
-            sender.sendMessage(errorMessage);
+        if (gameId == null) {
+            sendJoinGameFailedMessage(sender, "Game ID is missing");
             return;
         }
         
-        // Find the game session
         GameSession gameSession = findGameSessionById(gameId);
-        
-        if (gameSession != null) {
-            // Make sure the session is waiting for a player
-            if (gameSession.getPlayer2() == null) {
-                gameSession.setPlayer2(sender);
-                
-                // Update player info
-                sender.setPlayerInfo(new PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.BLACK));
-                
-                // Add player2 name to chessboard
-                ChessBoard board = gameSession.getChessBoard();
-                board.setBlackPlayerName(sender.getUsername());
-                
-                ClientHandler hostPlayer = gameSession.getPlayer1();
-                
-                // Notify both players about the game
-                // Notify player 1 (host)
-                Message gameStartMessage1 = new Message(Message.MessageType.GAME_START);
-                gameStartMessage1.setContent("Player " + sender.getUsername() + " joined your game. Your color: White");
-                
-                // Create a Message.PlayerInfo from PlayerInfo
-                Message.PlayerInfo messagePlayerInfo1 = new Message.PlayerInfo(hostPlayer.getUsername(), hostPlayer.getPlayerInfo().getColor());
-                gameStartMessage1.setPlayerInfo(messagePlayerInfo1);
-                
-                hostPlayer.sendMessage(gameStartMessage1);
-                
-                // Notify player 2 (joining)
-                Message gameStartMessage2 = new Message(Message.MessageType.GAME_START);
-                gameStartMessage2.setContent("You joined game hosted by " + hostPlayer.getUsername() + ". Your color: Black");
-                
-                // Create a Message.PlayerInfo from PlayerInfo
-                Message.PlayerInfo messagePlayerInfo2 = new Message.PlayerInfo(sender.getUsername(), sender.getPlayerInfo().getColor());
-                gameStartMessage2.setPlayerInfo(messagePlayerInfo2);
-                
-                sender.sendMessage(gameStartMessage2);
-                
-                // Log
-                System.out.println("New game started: " + sender.getUsername() + " vs " + hostPlayer.getUsername());
-                System.out.println("Game started between " + sender.getUsername() + " and " + hostPlayer.getUsername());
-                
-                // Update lobby for all other clients
-                broadcast(createLobbyUpdateMessage(), null);
-            } else {
-                // Game is full
-                Message errorMessage = new Message(Message.MessageType.JOIN_GAME);
-                errorMessage.setContent("Game is already full!");
-                sender.sendMessage(errorMessage);
-            }
-        } else {
-            // Game not found
-            Message errorMessage = new Message(Message.MessageType.JOIN_GAME);
-            errorMessage.setContent("Game not found!");
-            sender.sendMessage(errorMessage);
+        if (gameSession == null) {
+            sendJoinGameFailedMessage(sender, "Game not found");
+            return;
         }
+        
+        // Check if the game already has two players
+        if (gameSession.getPlayer2() != null) {
+            sendJoinGameFailedMessage(sender, "Game is full");
+            return;
+        }
+        
+        // Add the player to the game session
+        gameSession.setPlayer2(sender);
+        
+        // Assign colors
+        sender.setPlayerInfo(new PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.BLACK));
+        
+        // Notify the player that joined
+        Message joinSuccessMessage = new Message(Message.MessageType.GAME_START);
+        joinSuccessMessage.setContent("Your opponent: " + gameSession.getPlayer1().getUsername() + ". Your color: Black");
+        
+        // Create a Message.PlayerInfo from PlayerInfo
+        Message.PlayerInfo messagePlayerInfo = new Message.PlayerInfo(sender.getUsername(), sender.getPlayerInfo().getColor());
+        joinSuccessMessage.setPlayerInfo(messagePlayerInfo);
+        joinSuccessMessage.setGameId(gameId);
+        sender.sendMessage(joinSuccessMessage);
+        
+        // Notify the host
+        Message opponentJoinedMessage = new Message(Message.MessageType.GAME_START);
+        opponentJoinedMessage.setContent("Your opponent: " + sender.getUsername() + ". Your color: White");
+        
+        // Create a Message.PlayerInfo from PlayerInfo
+        Message.PlayerInfo hostPlayerInfo = new Message.PlayerInfo(gameSession.getPlayer1().getUsername(), gameSession.getPlayer1().getPlayerInfo().getColor());
+        opponentJoinedMessage.setPlayerInfo(hostPlayerInfo);
+        opponentJoinedMessage.setGameId(gameId);
+        gameSession.getPlayer1().sendMessage(opponentJoinedMessage);
+        
+        // Set the first move to white pieces
+        gameSession.getChessBoard().setCurrentTurn(ChessPiece.PieceColor.WHITE);
+        
+        // Automatically start the game now that 2 players have joined
+        startGame(gameSession);
+        
+        // Update the game list for other clients
+        broadcastGameList();
     }
     
     // Oyun ID'sine göre oyun oturumunu bul
@@ -652,5 +633,21 @@ public class ChessServer {
         
         lobbyUpdateMessage.setGames(availableGames);
         return lobbyUpdateMessage;
+    }
+    
+    /**
+     * Send a failure message when joining a game fails
+     */
+    private void sendJoinGameFailedMessage(ClientHandler client, String reason) {
+        Message errorMessage = new Message(Message.MessageType.JOIN_GAME);
+        errorMessage.setContent(reason);
+        client.sendMessage(errorMessage);
+    }
+    
+    /**
+     * Broadcast the updated game list to all clients
+     */
+    private void broadcastGameList() {
+        broadcast(createLobbyUpdateMessage(), null);
     }
 } 

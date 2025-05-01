@@ -63,6 +63,7 @@ public class LoginPanel extends JPanel {
         formPanel.add(usernameLabel, gbc);
         
         usernameField = new JTextField(20);
+        usernameField.setName("usernameField");
         usernameField.setFont(new Font("Arial", Font.PLAIN, 14));
         usernameField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 200, 200)), 
@@ -79,10 +80,12 @@ public class LoginPanel extends JPanel {
         formPanel.add(serverLabel, gbc);
         
         serverField = new JTextField("141.147.25.123", 20);
+        serverField.setName("serverField");
         serverField.setFont(new Font("Arial", Font.PLAIN, 14));
+        serverField.setToolTipText("Enter server IP address (e.g., 141.147.25.123)");
         serverField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 200, 200)), 
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)));
         gbc.gridx = 1;
         gbc.gridy = 1;
         formPanel.add(serverField, gbc);
@@ -95,6 +98,7 @@ public class LoginPanel extends JPanel {
         formPanel.add(portLabel, gbc);
         
         portField = new JTextField("9999", 20);
+        portField.setName("portField");
         portField.setFont(new Font("Arial", Font.PLAIN, 14));
         portField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 200, 200)), 
@@ -114,6 +118,7 @@ public class LoginPanel extends JPanel {
         
         // Login button
         loginButton = new JButton("Login");
+        loginButton.setName("connectButton");
         loginButton.setFont(new Font("Arial", Font.BOLD, 14));
         loginButton.setBackground(new Color(70, 130, 180));
         loginButton.setForeground(Color.WHITE);

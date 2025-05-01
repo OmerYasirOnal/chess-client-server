@@ -90,8 +90,8 @@ public class ChessClientSwing {
         lobbyPanel = new LobbyPanel(client);
         lobbyPanel.setLobbyListener(new LobbyPanel.LobbyListener() {
             @Override
-            public void onCreateGame() {
-                showCreateGamePanel();
+            public void onCreateGame(String timeControl) {
+                createGame(timeControl);
             }
             
             @Override

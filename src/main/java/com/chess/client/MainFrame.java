@@ -11,6 +11,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.Timer;
 
 import com.chess.common.ChessPiece;
 import com.chess.common.Message;
@@ -125,10 +126,13 @@ public class MainFrame extends JFrame {
         if (waitingRoomPanel == null) {
             waitingRoomPanel = new WaitingRoomPanel();
             
-            waitingRoomPanel.setWaitingRoomListener(() -> {
-                // Leave game and return to lobby
-                leaveGame();
-                showLobbyPanel();
+            waitingRoomPanel.setWaitingRoomListener(new WaitingRoomPanel.WaitingRoomListener() {
+                @Override
+                public void onLeaveGame() {
+                    // Leave game and return to lobby
+                    leaveGame();
+                    showLobbyPanel();
+                }
             });
             
             contentPanel.add(waitingRoomPanel, WAITING_ROOM_PANEL);
@@ -199,31 +203,35 @@ public class MainFrame extends JFrame {
         SwingUtilities.invokeLater(() -> {
             switch (message.getType()) {
                 case GAME_START:
+                    // Opponent has joined the game and we received game start message
+                    waitingRoomPanel.setOpponentName(message.getSender());
+                    waitingRoomPanel.setStatusMessage("Opponent joined! Game starting...");
+                    
+                    // Get player color from message
                     String content = message.getContent();
-                    ChessPiece.PieceColor playerColor = content.contains("white") ? 
+                    ChessPiece.PieceColor playerColor = content.contains("White") ? 
                             ChessPiece.PieceColor.WHITE : ChessPiece.PieceColor.BLACK;
                     
-                    // Start the game
+                    // Set player color
                     if (gamePanel != null) {
                         gamePanel.setPlayerColor(playerColor);
                     }
                     
-                    String gameId = client.getCurrentGameId();
-                    startGame(gameId);
+                    // Start the game
+                    startGame(client.getCurrentGameId());
                     break;
                     
                 case DISCONNECT:
-                    if (client.isConnected()) {
-                        waitingRoomPanel.setStatusMessage("Disconnected from server: " + message.getContent());
-                    }
-                    break;
+                    // Opponent has disconnected
+                    waitingRoomPanel.setStatusMessage("Opponent disconnected. Returning to lobby...");
                     
-                case CONNECT:
-                    waitingRoomPanel.setStatusMessage("Opponent connected!");
+                    // Return to lobby after a brief delay
+                    Timer timer = new Timer(1500, e -> showLobbyPanel());
+                    timer.setRepeats(false);
+                    timer.start();
                     break;
                     
                 default:
-                    // Ignore other messages
                     break;
             }
         });
@@ -236,52 +244,28 @@ public class MainFrame extends JFrame {
         
         SwingUtilities.invokeLater(() -> {
             switch (message.getType()) {
-                case GAME_START:
-                    String content = message.getContent();
-                    ChessPiece.PieceColor playerColor = content.contains("white") ? 
-                            ChessPiece.PieceColor.WHITE : ChessPiece.PieceColor.BLACK;
-                    gamePanel.setPlayerColor(playerColor);
-                    gamePanel.showGameStartMessage(message.getContent());
-                    break;
-                    
                 case MOVE:
+                    // Handle move message
                     gamePanel.handleMoveMessage(message);
                     break;
                     
-                case GAME_END:
-                    gamePanel.showGameEndMessage(message.getContent());
-                    // After game ends, allow returning to lobby
-                    SwingUtilities.invokeLater(() -> {
-                        int response = javax.swing.JOptionPane.showConfirmDialog(
-                            this,
-                            "Return to lobby?",
-                            "Game Ended",
-                            javax.swing.JOptionPane.YES_NO_OPTION);
-                        
-                        if (response == javax.swing.JOptionPane.YES_OPTION) {
-                            showLobbyPanel();
-                        }
-                    });
-                    break;
-                    
                 case CHAT:
+                    // Handle chat message
                     gamePanel.addChatMessage(message.getSender(), message.getContent());
                     break;
                     
-                case DISCONNECT:
-                    if (client.isConnected()) {
-                        gamePanel.showDisconnectMessage(message.getContent());
-                    }
+                case GAME_END:
+                    // Handle game end message
+                    gamePanel.showGameEndMessage(message.getContent());
                     break;
                     
-                case CONNECT:
-                case READY:
-                    // These messages can be handled by GamePanel
-                    gamePanel.handleInfoMessage(message);
+                case DISCONNECT:
+                    // Handle disconnect during game
+                    gamePanel.addChatMessage("System", "Opponent disconnected. Game ended.");
+                    showLobbyPanel();
                     break;
-                
+                    
                 default:
-                    // Ignore other messages
                     break;
             }
         });
@@ -379,5 +363,31 @@ public class MainFrame extends JFrame {
             MainFrame mainFrame = new MainFrame();
             mainFrame.setVisible(true);
         });
+    }
+    
+    // ----------------------------------------------------------------
+    // Testing helper methods - only used by tests, not in production
+    // ----------------------------------------------------------------
+    
+    /**
+     * Get the client for testing purposes
+     * This method is only used in tests and should not be used in production code
+     */
+    public ChessClient getClientForTesting() {
+        return this.client;
+    }
+    
+    /**
+     * Handle a message directly for testing purposes
+     * This method is only used in tests and should not be used in production code
+     */
+    public void handleMessageForTesting(Message message) {
+        if (waitingRoomPanel != null && waitingRoomPanel.isShowing()) {
+            handleWaitingRoomMessage(message);
+        } else if (gamePanel != null && gamePanel.isShowing()) {
+            handleGameMessage(message);
+        } else if (lobbyPanel != null && lobbyPanel.isShowing()) {
+            handleLobbyMessage(message);
+        }
     }
 } 

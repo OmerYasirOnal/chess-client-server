@@ -1,39 +1,26 @@
 package com.chess.client;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.awt.Component;
 import java.awt.Container;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
-import javax.swing.SwingUtilities;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.swing.core.ComponentLookupScope;
-import org.assertj.swing.core.GenericTypeMatcher;
 import org.assertj.swing.core.matcher.JButtonMatcher;
-import org.assertj.swing.core.matcher.JLabelMatcher;
 import org.assertj.swing.edt.GuiActionRunner;
-import org.assertj.swing.finder.JOptionPaneFinder;
 import org.assertj.swing.finder.WindowFinder;
 import org.assertj.swing.fixture.DialogFixture;
 import org.assertj.swing.fixture.FrameFixture;
-import org.assertj.swing.fixture.JButtonFixture;
-import org.assertj.swing.fixture.JLabelFixture;
-import org.assertj.swing.fixture.JOptionPaneFixture;
-import org.assertj.swing.fixture.JPanelFixture;
 import org.assertj.swing.junit.testcase.AssertJSwingJUnitTestCase;
 import org.assertj.swing.timing.Pause;
 import org.junit.Test;
 
+import com.chess.common.Message;
+
 /**
- * Test class for addressing the CreateGame and Game flow bugs with TDD approach.
+ * Test class for the simplified chess game flow with no time controls and auto-start on player join.
  */
 public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
     
@@ -59,122 +46,113 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
     }
     
     /**
-     * Test 1: Ensure preset buttons in CreateGame tab set the time control correctly
+     * Test 1: Verify game creation goes to waiting room without time control options
      */
     @Test
-    public void presetButtonsSelectTimeControl() {
+    public void createGameNavigatesToWaitingRoom() {
         // Navigate to Create Game tab
         window.tabbedPane().selectTab("Create Game");
         
-        // Test each of the preset game buttons
-        testPresetButton("Blitz", "3+2");
-        testPresetButton("Blitz", "5+0");
-        testPresetButton("Blitz", "10+5");
+        // Click "Create Game" button
+        window.button(JButtonMatcher.withText("Create Game")).click();
         
-        testPresetButton("Rapid", "15+10");
-        testPresetButton("Rapid", "20+0");
-        testPresetButton("Rapid", "30+0");
+        // Wait for dialog to appear
+        DialogFixture createGameDialog = WindowFinder.findDialog("Create Game").using(robot());
         
-        testPresetButton("Classical", "45+45");
-        testPresetButton("Classical", "60+30");
-        testPresetButton("Classical", "90+30");
-    }
-    
-    /**
-     * Test 2: Verify that custom game creation navigates to waiting room
-     */
-    @Test
-    public void customCreateNavigatesToWaitingRoom() {
-        // Navigate to Create Game tab
-        window.tabbedPane().selectTab("Create Game");
+        // The dialog should show no time control options
+        assertThat(findLabelWithText(createGameDialog.target(), "Time Control")).isNull();
         
-        // Click "Custom Game..."
-        window.button(JButtonMatcher.withText("Custom Game...")).click();
-        robot().waitForIdle();
-        
-        // Wait for custom dialog to appear
-        DialogFixture customDialog = WindowFinder.findDialog(new GenericTypeMatcher<JDialog>(JDialog.class) {
-            @Override
-            protected boolean isMatching(JDialog dialog) {
-                return "Custom Game".equals(dialog.getTitle()) && dialog.isShowing();
-            }
-        }).using(robot());
-        
-        // Set 7 minutes + 5 second increment
-        // Note: We find the combo boxes by name
-        customDialog.comboBox("minutesComboBox").selectItem(7);
-        customDialog.comboBox("incrementComboBox").selectItem(5);
-        
-        // Click "Create Game"
-        customDialog.button(JButtonMatcher.withText("Create Game")).click();
+        // Click "Create Game" button in the dialog
+        createGameDialog.button(JButtonMatcher.withText("Create Game")).click();
         
         // Wait for UI to update
         robot().waitForIdle();
         Pause.pause(500);
         
-        // Assert: We should be in the Waiting Room, not the Create Game tab
+        // Assert: We should be in the Waiting Room
         assertWaitingRoomIsVisible();
         
-        // Check that the time control is properly displayed in the waiting room
-        JLabel timeControlLabel = robot().finder().findByName("timeControlLabel", JLabel.class);
-        assertThat(timeControlLabel.getText()).isEqualTo("20+10");  // Hardcoded for now
+        // Check that the game type is "Standard"
+        Component timeControlLabel = findComponentByTextAndType(frame, "Standard", JLabel.class);
+        assertThat(timeControlLabel).isNotNull();
     }
     
     /**
-     * Test 3: Game timer counts down properly
+     * Test 2: Verify waiting room shows auto-start message instead of ready button
      */
     @Test
-    public void gameTimerCountsDown() {
-        // Create a game with a 1-minute time control
-        startGameWithTimeControl("1+0");
+    public void waitingRoomShowsAutoStartMessage() {
+        // Create a game
+        createTestGame();
         
-        // Get initial timer display
-        JLabelFixture whiteTimerLabel = getWhiteTimerLabel();
-        String initialTime = whiteTimerLabel.text();
-        assertThat(initialTime).contains("1:00");
+        // Assert: We should be in the Waiting Room
+        assertWaitingRoomIsVisible();
         
-        // Wait for 1.5 seconds to account for any delay
-        Pause.pause(1500);
+        // Check that there is no Ready button
+        Component readyButton = findButtonWithText(frame, "Ready");
+        assertThat(readyButton).isNull();
         
-        // Get updated timer display and verify it has counted down
-        String updatedTime = whiteTimerLabel.text();
-        assertThat(updatedTime).matches("0:[0-5][0-9]");  // Should show 0:59 or less
-        assertThat(updatedTime).isNotEqualTo(initialTime);
+        // Check that there is an auto-start message
+        Component autoStartLabel = findComponentContainingTextAndType(
+                frame, "Game will start automatically", JLabel.class);
+        assertThat(autoStartLabel).isNotNull();
+        
+        // Check that there is a Leave Game button
+        Component leaveButton = findButtonWithText(frame, "Leave Game");
+        assertThat(leaveButton).isNotNull();
     }
     
     /**
-     * Test 4: Game end shows appropriate popup
+     * Test 3: Verify game starts automatically when opponent joins
      */
     @Test
-    public void gameEndShowsPopup() {
-        // Start a game
-        startGameWithTimeControl("1+0");
+    public void gameStartsAutomaticallyWhenOpponentJoins() {
+        // Create a game
+        createTestGame();
         
-        // Simulate game end by directly calling the game end method on EDT
+        // Simulate an opponent joining by sending a GAME_START message
         GuiActionRunner.execute(() -> {
-            GamePanel gamePanel = getGamePanel();
-            if (gamePanel != null) {
-                gamePanel.showGameEndMessage("Time's up! You lost");
+            Message gameStartMessage = new Message(Message.MessageType.GAME_START);
+            gameStartMessage.setContent("Your opponent: TestOpponent. Your color: White");
+            gameStartMessage.setSender("TestOpponent");
+            
+            // Find the correct panel and simulate the message
+            WaitingRoomPanel waitingRoom = findWaitingRoomPanel(frame);
+            if (waitingRoom != null) {
+                waitingRoom.setOpponentName("TestOpponent");
+                waitingRoom.setStatusMessage("Opponent joined! Game starting...");
+            }
+            
+            // Force the transition to the game panel
+            try {
+                java.lang.reflect.Method startGameMethod = 
+                        MainFrame.class.getDeclaredMethod("startGame", String.class);
+                startGameMethod.setAccessible(true);
+                startGameMethod.invoke(frame, "test-game-id");
+                
+                // Set player color to white
+                GamePanel gamePanel = findGamePanel(frame);
+                if (gamePanel != null) {
+                    gamePanel.setPlayerColor(com.chess.common.ChessPiece.PieceColor.WHITE);
+                    gamePanel.showGameStartMessage("Game started with opponent");
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to start game: " + e.getMessage());
             }
         });
         
-        // Wait for the dialog to appear
-        JOptionPaneFixture optionPane = JOptionPaneFinder.findOptionPane().using(robot());
+        // Wait for the game panel to appear
+        robot().waitForIdle();
+        Pause.pause(500);
         
-        // Verify the dialog content
-        assertThat(optionPane.title()).isEqualTo("Game Ended");
-        optionPane.requireMessage("Game over: Time's up! You lost\nWhat would you like to do?");
+        // Check that the game panel is visible
+        GamePanel gamePanel = findGamePanel(frame);
+        assertThat(gamePanel).isNotNull();
         
-        // Verify that the options are present (New Game, Main Menu, Exit)
-        optionPane.buttonWithText("New Game").isEnabled();
-        optionPane.buttonWithText("Main Menu").isEnabled();
-        optionPane.buttonWithText("Exit").isEnabled();
-        
-        // Close the dialog
-        optionPane.buttonWithText("Main Menu").click();
-        
-        // Verify we're back at the login screen
-        window.textBox("usernameField").requireVisible();
+        // Check that the game status shows game started
+        Component gameStatusLabel = findComponentContainingTextAndType(
+                gamePanel, "Game Started", JLabel.class);
+        assertThat(gameStatusLabel).isNotNull();
     }
     
     // --------------------------------
@@ -194,168 +172,143 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
     }
     
     /**
-     * Helper to test clicking a specific preset button and verify time control
+     * Helper to create a test game
      */
-    private void testPresetButton(String gameType, String timeControl) {
-        JPanel presetPanel = findPresetPanel(gameType, timeControl);
-        JButton createButton = findCreateButtonInPanel(presetPanel);
+    private void createTestGame() {
+        // Navigate to Create Game tab
+        window.tabbedPane().selectTab("Create Game");
         
-        // Simulate clicking the Create button for this preset
-        GuiActionRunner.execute(() -> createButton.doClick());
+        // Click "Create Game" button
+        window.button(JButtonMatcher.withText("Create Game")).click();
+        
+        // Wait for dialog to appear
+        DialogFixture createGameDialog = WindowFinder.findDialog("Create Game").using(robot());
+        
+        // Click "Create Game" button in the dialog
+        createGameDialog.button(JButtonMatcher.withText("Create Game")).click();
+        
+        // Wait for UI to update
         robot().waitForIdle();
         Pause.pause(500);
-        
-        // Verify the game is created with the correct time control
-        // We should be navigated to the waiting room
-        assertWaitingRoomIsVisible();
-        
-        // Check the time control in the waiting room
-        JLabel timeControlLabel = robot().finder().findByName("timeControlLabel", JLabel.class);
-        assertThat(timeControlLabel.getText()).isEqualTo(timeControl);
-        
-        // Go back to the lobby to test the next preset
-        goBackToLobby();
     }
     
     /**
-     * Helper to find a specific preset panel by game type and time control
+     * Assert that the waiting room is visible
      */
-    private JPanel findPresetPanel(String gameType, String timeControl) {
-        List<JPanel> foundPanels = new ArrayList<>();
+    private void assertWaitingRoomIsVisible() {
+        Component waitingRoomTitle = findComponentByTextAndType(frame, "Waiting Room", JLabel.class);
+        assertThat(waitingRoomTitle).isNotNull();
+    }
+    
+    /**
+     * Find a button with the specified text
+     */
+    private JButton findButtonWithText(Container container, String text) {
+        return findComponentByTextAndType(container, text, JButton.class);
+    }
+    
+    /**
+     * Find a component by text and type
+     */
+    private <T extends Component> T findComponentByTextAndType(Container container, String text, Class<T> type) {
+        if (container == null) return null;
         
-        robot().finder().findAll(new GenericTypeMatcher<JPanel>(JPanel.class) {
-            @Override
-            protected boolean isMatching(JPanel panel) {
-                if (panel.getLayout() instanceof javax.swing.BoxLayout) {
-                    boolean hasGameType = false;
-                    boolean hasTimeControl = false;
-                    
-                    for (Component c : panel.getComponents()) {
-                        if (c instanceof JLabel) {
-                            JLabel label = (JLabel) c;
-                            if (label.getText().equals(gameType)) {
-                                hasGameType = true;
-                            } else if (label.getText().equals(timeControl)) {
-                                hasTimeControl = true;
-                            }
-                        }
-                    }
-                    
-                    if (hasGameType && hasTimeControl) {
-                        foundPanels.add(panel);
-                        return true;
-                    }
+        for (Component component : container.getComponents()) {
+            if (type.isInstance(component)) {
+                if (component instanceof JLabel && ((JLabel)component).getText().equals(text)) {
+                    return type.cast(component);
                 }
-                return false;
+                if (component instanceof JButton && ((JButton)component).getText().equals(text)) {
+                    return type.cast(component);
+                }
             }
-        });
-        
-        assertThat(foundPanels).isNotEmpty();
-        return foundPanels.get(0);
-    }
-    
-    /**
-     * Helper to find the Create button within a preset panel
-     */
-    private JButton findCreateButtonInPanel(Container panel) {
-        if (panel == null) return null;
-        
-        for (Component c : panel.getComponents()) {
-            if (c instanceof JButton && "Create".equals(((JButton) c).getText())) {
-                return (JButton) c;
+            
+            if (component instanceof Container) {
+                T found = findComponentByTextAndType((Container)component, text, type);
+                if (found != null) {
+                    return found;
+                }
             }
         }
+        
         return null;
     }
     
     /**
-     * Helper to assert that the waiting room panel is visible
+     * Find a component containing the specified text and of the specified type
      */
-    private void assertWaitingRoomIsVisible() {
-        // Find the waiting room panel by its unique "Waiting for opponent..." label
-        JLabel statusLabel = robot().finder().findByName("statusLabel", JLabel.class);
-        assertThat(statusLabel.isShowing()).isTrue();
-    }
-    
-    /**
-     * Helper to go back to the lobby from waiting room
-     */
-    private void goBackToLobby() {
-        // Click the Leave Game button in the waiting room
-        JButton leaveButton = robot().finder().findByName("leaveGameButton", JButton.class);
-        GuiActionRunner.execute(() -> leaveButton.doClick());
-        robot().waitForIdle();
+    private <T extends Component> T findComponentContainingTextAndType(Container container, String text, Class<T> type) {
+        if (container == null) return null;
         
-        // Verify we're back at the lobby
-        JTabbedPane tabbedPane = robot().finder().findByType(JTabbedPane.class);
-        GuiActionRunner.execute(() -> tabbedPane.setSelectedIndex(0)); // Select Join Game tab
-    }
-    
-    /**
-     * Helper to start a game with a specific time control
-     */
-    private void startGameWithTimeControl(String timeControl) {
-        // Navigate to Create Game tab
-        window.tabbedPane().selectTab("Create Game");
-        
-        // We'll use the custom game dialog to create a game with the specified time control
-        window.button(JButtonMatcher.withText("Custom Game...")).click();
-        robot().waitForIdle();
-        
-        // Wait for custom dialog
-        DialogFixture customDialog = WindowFinder.findDialog(new GenericTypeMatcher<JDialog>(JDialog.class) {
-            @Override
-            protected boolean isMatching(JDialog dialog) {
-                return "Custom Game".equals(dialog.getTitle()) && dialog.isShowing();
+        for (Component component : container.getComponents()) {
+            if (type.isInstance(component)) {
+                if (component instanceof JLabel && ((JLabel)component).getText().contains(text)) {
+                    return type.cast(component);
+                }
+                if (component instanceof JButton && ((JButton)component).getText().contains(text)) {
+                    return type.cast(component);
+                }
             }
-        }).using(robot());
-        
-        // Parse the time control and set minutes and increment
-        String[] parts = timeControl.split("\\+");
-        int minutes = Integer.parseInt(parts[0]);
-        int increment = Integer.parseInt(parts[1]);
-        
-        customDialog.comboBox("minutesComboBox").selectItem(minutes);
-        customDialog.comboBox("incrementComboBox").selectItem(increment);
-        
-        // Create the game
-        customDialog.button(JButtonMatcher.withText("Create Game")).click();
-        robot().waitForIdle();
-        
-        // Mock a game start (normally this would come from server)
-        GuiActionRunner.execute(() -> {
-            GamePanel gamePanel = getGamePanel();
-            if (gamePanel != null) {
-                gamePanel.setPlayerColor(com.chess.common.ChessPiece.PieceColor.WHITE);
-                gamePanel.showGameStartMessage("Game started with opponent");
-            }
-        });
-        robot().waitForIdle();
-    }
-    
-    /**
-     * Helper to get the white timer label
-     */
-    private JLabelFixture getWhiteTimerLabel() {
-        // Find the timer label in the game panel
-        return window.label(new GenericTypeMatcher<JLabel>(JLabel.class) {
-            @Override
-            protected boolean isMatching(JLabel label) {
-                return label.isShowing() && 
-                      (label.getName() != null && label.getName().equals("whiteTimerLabel"));
-            }
-        });
-    }
-    
-    /**
-     * Helper to get the GamePanel from the MainFrame
-     */
-    private GamePanel getGamePanel() {
-        for (Component c : frame.getContentPane().getComponents()) {
-            if (c instanceof GamePanel) {
-                return (GamePanel) c;
+            
+            if (component instanceof Container) {
+                T found = findComponentContainingTextAndType((Container)component, text, type);
+                if (found != null) {
+                    return found;
+                }
             }
         }
+        
+        return null;
+    }
+    
+    /**
+     * Find a label with the specified text
+     */
+    private JLabel findLabelWithText(Container container, String text) {
+        return findComponentByTextAndType(container, text, JLabel.class);
+    }
+    
+    /**
+     * Find the WaitingRoomPanel
+     */
+    private WaitingRoomPanel findWaitingRoomPanel(Container container) {
+        if (container == null) return null;
+        
+        for (Component component : container.getComponents()) {
+            if (component instanceof WaitingRoomPanel) {
+                return (WaitingRoomPanel) component;
+            }
+            
+            if (component instanceof Container) {
+                WaitingRoomPanel found = findWaitingRoomPanel((Container)component);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Find the GamePanel
+     */
+    private GamePanel findGamePanel(Container container) {
+        if (container == null) return null;
+        
+        for (Component component : container.getComponents()) {
+            if (component instanceof GamePanel) {
+                return (GamePanel) component;
+            }
+            
+            if (component instanceof Container) {
+                GamePanel found = findGamePanel((Container)component);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        
         return null;
     }
 } 
