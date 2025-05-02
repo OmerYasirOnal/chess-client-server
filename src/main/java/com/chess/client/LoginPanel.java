@@ -18,6 +18,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
+import com.chess.client.util.UIUtils;
+
 public class LoginPanel extends JPanel {
     private static final long serialVersionUID = 1L;
     
@@ -119,11 +121,7 @@ public class LoginPanel extends JPanel {
         // Login button
         loginButton = new JButton("Login");
         loginButton.setName("connectButton");
-        loginButton.setFont(new Font("Arial", Font.BOLD, 14));
-        loginButton.setBackground(new Color(70, 130, 180));
-        loginButton.setForeground(Color.WHITE);
-        loginButton.setFocusPainted(false);
-        loginButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        UIUtils.setPrimaryButtonStyle(loginButton);
         gbc.gridx = 0;
         gbc.gridy = 4;
         gbc.gridwidth = 2;

@@ -30,6 +30,7 @@ import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+import com.chess.client.util.UIUtils;
 import com.chess.common.Message;
 
 public class LobbyPanel extends JPanel {
@@ -110,9 +111,7 @@ public class LobbyPanel extends JPanel {
         
         JButton logoutButton = new JButton("Logout");
         logoutButton.setName("logoutButton");
-        logoutButton.setBackground(new Color(200, 50, 50));
-        logoutButton.setForeground(Color.WHITE);
-        logoutButton.setFocusPainted(false);
+        UIUtils.setDangerButtonStyle(logoutButton);
         logoutButton.addActionListener(e -> handleLogout());
         userPanel.add(logoutButton);
         
@@ -182,9 +181,7 @@ public class LobbyPanel extends JPanel {
         
         JButton createNewButton = new JButton("Create Game");
         createNewButton.setFont(new Font("Arial", Font.BOLD, 14));
-        createNewButton.setBackground(new Color(70, 130, 180));
-        createNewButton.setForeground(Color.WHITE);
-        createNewButton.setFocusPainted(false);
+        UIUtils.setPrimaryButtonStyle(createNewButton);
         createNewButton.addActionListener(e -> {
             tabbedPane.setSelectedIndex(1); // Switch to Create Game tab
         });
@@ -207,21 +204,15 @@ public class LobbyPanel extends JPanel {
         
         refreshButton = new JButton("Refresh");
         refreshButton.setName("refreshButton");
-        refreshButton.setFont(new Font("Arial", Font.PLAIN, 14));
-        refreshButton.setBackground(new Color(240, 240, 240));
-        refreshButton.setForeground(Color.BLACK);
-        refreshButton.setFocusPainted(false);
-        refreshButton.setPreferredSize(new Dimension(120, 30));
+        UIUtils.setNeutralButtonStyle(refreshButton);
+        UIUtils.setButtonSize(refreshButton, 120, 30);
         refreshButton.addActionListener(e -> refreshGameList());
         buttonPanel.add(refreshButton);
         
         joinButton = new JButton("Join Game");
         joinButton.setName("joinGameButton");
-        joinButton.setFont(new Font("Arial", Font.BOLD, 14));
-        joinButton.setBackground(new Color(70, 130, 180));
-        joinButton.setForeground(Color.WHITE);
-        joinButton.setFocusPainted(false);
-        joinButton.setPreferredSize(new Dimension(120, 30));
+        UIUtils.setPrimaryButtonStyle(joinButton);
+        UIUtils.setButtonSize(joinButton, 120, 30);
         joinButton.addActionListener(e -> joinSelectedGame());
         joinButton.setEnabled(false); // Initially disabled until a game is selected
         buttonPanel.add(joinButton);
@@ -245,11 +236,9 @@ public class LobbyPanel extends JPanel {
         
         JButton createGameButton = new JButton("Create Game");
         createGameButton.setName("createStandardGameButton");
+        UIUtils.setPrimaryButtonStyle(createGameButton);
         createGameButton.setFont(new Font("Arial", Font.BOLD, 18));
-        createGameButton.setBackground(new Color(70, 130, 180));
-        createGameButton.setForeground(Color.WHITE);
-        createGameButton.setFocusPainted(false);
-        createGameButton.setPreferredSize(new Dimension(200, 50));
+        UIUtils.setButtonSize(createGameButton, 200, 50);
         createGameButton.addActionListener(e -> createGameWithTimeControl("standard"));
         
         GridBagConstraints gbc = new GridBagConstraints();

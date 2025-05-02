@@ -15,6 +15,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
+import com.chess.client.util.UIUtils;
 import com.chess.common.ChessMove;
 import com.chess.common.ChessPiece;
 import com.chess.common.Message;
@@ -82,6 +83,7 @@ public class GamePanel extends JPanel {
         chatInputPanel.add(chatInput, BorderLayout.CENTER);
         
         sendButton = new JButton("Send");
+        UIUtils.setPrimaryButtonStyle(sendButton);
         sendButton.addActionListener(e -> sendChatMessage());
         chatInputPanel.add(sendButton, BorderLayout.EAST);
         
@@ -180,6 +182,7 @@ public class GamePanel extends JPanel {
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         
         JButton resignButton = new JButton("Resign");
+        UIUtils.setDangerButtonStyle(resignButton);
         resignButton.addActionListener(e -> {
             int result = JOptionPane.showConfirmDialog(
                     this,
@@ -195,9 +198,10 @@ public class GamePanel extends JPanel {
         bottomPanel.add(resignButton);
         
         JButton drawButton = new JButton("Offer Draw");
+        UIUtils.setNeutralButtonStyle(drawButton);
         drawButton.addActionListener(e -> {
             client.sendDrawOfferMessage();
-            addChatMessage("System", "You offered a draw. Waiting for opponent to accept or decline.");
+            addChatMessage("System", "⌛ You offered a draw. Waiting for opponent to accept or decline.");
         });
         bottomPanel.add(drawButton);
         

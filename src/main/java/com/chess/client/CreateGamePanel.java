@@ -14,6 +14,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
+import com.chess.client.util.UIUtils;
+
 /**
  * Panel for creating a new chess game
  */
@@ -57,6 +59,7 @@ public class CreateGamePanel extends JDialog {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         
         cancelButton = new JButton("Cancel");
+        UIUtils.setNeutralButtonStyle(cancelButton);
         cancelButton.addActionListener(e -> {
             if (createGameListener != null) {
                 createGameListener.onCancel();
@@ -66,6 +69,7 @@ public class CreateGamePanel extends JDialog {
         buttonPanel.add(cancelButton);
         
         createButton = new JButton("Create Game");
+        UIUtils.setPrimaryButtonStyle(createButton);
         createButton.addActionListener(e -> {
             if (createGameListener != null) {
                 createGameListener.onCreateGame("standard");

@@ -119,13 +119,6 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
             gameStartMessage.setContent("Your opponent: TestOpponent. Your color: White");
             gameStartMessage.setSender("TestOpponent");
             
-            // Find the correct panel and simulate the message
-            WaitingRoomPanel waitingRoom = findWaitingRoomPanel(frame);
-            if (waitingRoom != null) {
-                waitingRoom.setOpponentName("TestOpponent");
-                waitingRoom.setStatusMessage("Opponent joined! Game starting...");
-            }
-            
             // Force the transition to the game panel
             try {
                 client.showGamePanelForTesting();
@@ -196,8 +189,8 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
      * Assert that the waiting room is visible
      */
     private void assertWaitingRoomIsVisible() {
-        Component waitingRoomTitle = findComponentByTextAndType(frame, "Waiting Room", JLabel.class);
-        assertThat(waitingRoomTitle).isNotNull();
+        Component gameStatusLabel = findComponentContainingTextAndType(frame, "Waiting for opponent", JLabel.class);
+        assertThat(gameStatusLabel).isNotNull();
     }
     
     /**
@@ -266,28 +259,6 @@ public class ChessGameFlowUITest extends AssertJSwingJUnitTestCase {
      */
     private JLabel findLabelWithText(Container container, String text) {
         return findComponentByTextAndType(container, text, JLabel.class);
-    }
-    
-    /**
-     * Find the waiting room panel
-     */
-    private WaitingRoomPanel findWaitingRoomPanel(Container container) {
-        if (container == null) return null;
-        
-        for (Component component : container.getComponents()) {
-            if (component instanceof WaitingRoomPanel) {
-                return (WaitingRoomPanel) component;
-            }
-            
-            if (component instanceof Container) {
-                WaitingRoomPanel found = findWaitingRoomPanel((Container) component);
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        
-        return null;
     }
     
     /**

@@ -186,11 +186,6 @@ public class ChessBoardInvalidMoveUITest extends AssertJSwingJUnitTestCase {
             gameStartMessage.setContent("Your opponent: TestOpponent. Your color: White");
             gameStartMessage.setSender("TestOpponent");
             
-            WaitingRoomPanel waitingRoom = findWaitingRoomPanel(frame);
-            if (waitingRoom != null) {
-                waitingRoom.setOpponentName("TestOpponent");
-            }
-            
             // Force the transition to the game panel
             try {
                 client.showGamePanelForTesting();
@@ -224,28 +219,6 @@ public class ChessBoardInvalidMoveUITest extends AssertJSwingJUnitTestCase {
                 return ((GamePanel) component).getBoardPanel();
             } else if (component instanceof Container) {
                 ChessBoardPanel found = findChessBoardPanel((Container) component);
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        
-        return null;
-    }
-    
-    /**
-     * Find the WaitingRoomPanel
-     */
-    private WaitingRoomPanel findWaitingRoomPanel(Container container) {
-        if (container == null) return null;
-        
-        for (Component component : container.getComponents()) {
-            if (component instanceof WaitingRoomPanel) {
-                return (WaitingRoomPanel) component;
-            }
-            
-            if (component instanceof Container) {
-                WaitingRoomPanel found = findWaitingRoomPanel((Container) component);
                 if (found != null) {
                     return found;
                 }

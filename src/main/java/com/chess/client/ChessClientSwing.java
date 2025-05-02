@@ -30,6 +30,7 @@ import com.chess.common.ChessMove;
 import com.chess.common.ChessPiece;
 import com.chess.common.Message;
 import com.chess.common.Message.GameInfo;
+import com.chess.client.util.UIUtils;
 
 public class ChessClientSwing {
     private JFrame frame;
@@ -186,18 +187,18 @@ public class ChessClientSwing {
         rightPanel.add(Box.createVerticalStrut(20));
 
         // Buttons
-        readyButton = new JButton("I'm Ready");
-        readyButton.setFont(new Font("Arial", Font.BOLD, 14));
-        readyButton.setBackground(new Color(70, 130, 180));
-        readyButton.setForeground(Color.WHITE);
-        readyButton.setFocusPainted(false);
+        readyButton = new JButton("👍 I'M READY TO PLAY");
+        UIUtils.setPrimaryButtonStyle(readyButton);
         readyButton.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
-        readyButton.setPreferredSize(new Dimension(230, 40));
+        UIUtils.setButtonSize(readyButton, 230, 40);
         readyButton.addActionListener(e -> {
             client.sendReadyMessage();
             readyButton.setEnabled(false);
             readyButton.setText("Waiting for opponent...");
+            readyButton.setForeground(UIUtils.WAITING_COLOR);
+            readyButton.setBackground(Color.GRAY);
             statusLabel.setText("You are ready. Waiting for your opponent to be ready...");
+            statusLabel.setForeground(UIUtils.WAITING_COLOR);
             
             // Tahtayı kilitli tut
             chessBoardPanel.setLocked(true);
@@ -206,12 +207,9 @@ public class ChessClientSwing {
         
         // Leave game button
         JButton leaveButton = new JButton("Leave Game");
-        leaveButton.setFont(new Font("Arial", Font.BOLD, 14));
+        UIUtils.setDangerButtonStyle(leaveButton);
         leaveButton.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
-        leaveButton.setBackground(new Color(200, 50, 50));
-        leaveButton.setForeground(Color.WHITE);
-        leaveButton.setFocusPainted(false);
-        leaveButton.setPreferredSize(new Dimension(230, 40));
+        UIUtils.setButtonSize(leaveButton, 230, 40);
         leaveButton.addActionListener(e -> leaveGame());
         rightPanel.add(Box.createVerticalStrut(10));
         rightPanel.add(leaveButton);
@@ -256,6 +254,12 @@ public class ChessClientSwing {
                 updateStatus(message.getContent());
                 showGamePanel();
                 
+                // Ensure gameId is set when joining a game
+                if (message.getGameId() != null && !message.getGameId().isEmpty()) {
+                    client.setCurrentGameId(message.getGameId());
+                    System.out.println("Game started with ID: " + message.getGameId());
+                }
+                
                 // Oyun başladıysa tahtanın kilidini aç (eğer hazırsa ve sırası geldiyse)
                 if (message.getContent().contains("Game started")) {
                     ChessPiece.PieceColor turn = chessBoardPanel.getBoard().getCurrentTurn();
@@ -293,11 +297,16 @@ public class ChessClientSwing {
                 if (message.getContent().contains("is ready")) {
                     if (readyButton.isEnabled()) {
                         // Diğer oyuncu hazır, biz değiliz
-                        readyButton.setText("Click to Ready Up");
-                        readyButton.setBackground(new Color(0, 180, 0)); // Daha belirgin yeşil
+                        readyButton.setText("👉 CLICK TO READY UP 👈");
+                        readyButton.setFont(new Font("Arial", Font.BOLD, 14));
+                        readyButton.setBackground(UIUtils.SUCCESS_COLOR);
+                        readyButton.setForeground(Color.WHITE);
+                        statusLabel.setText("Opponent is ready. Please click Ready Up to start the game!");
+                        statusLabel.setForeground(UIUtils.SUCCESS_COLOR);
                     } else {
                         // Her iki oyuncu da hazır
                         statusLabel.setText("Both players ready. Game will start soon...");
+                        statusLabel.setForeground(UIUtils.SUCCESS_COLOR);
                     }
                 }
                 break;
@@ -306,6 +315,20 @@ public class ChessClientSwing {
                 if (isInGame) {
                     chessBoardPanel.setLocked(true); // Rakip ayrıldığında tahtayı kilitle
                     showGameEndDialog("Opponent left the game. Game over.");
+                }
+                break;
+            case DELETE_GAME:
+                // This case handles confirmation that a game was deleted
+                if (message.getContent() != null) {
+                    updateStatus(message.getContent());
+                    System.out.println("DELETE_GAME confirmation received: " + message.getContent());
+                }
+                
+                // Request an updated game list to refresh the lobby
+                if (lobbyPanel != null && !isInGame) {
+                    System.out.println("Requesting updated game list after DELETE_GAME");
+                    Message gameListRequest = new Message(Message.MessageType.GAME_LIST);
+                    client.sendMessage(gameListRequest);
                 }
                 break;
             case GAME_LIST_RESPONSE:
@@ -318,9 +341,13 @@ public class ChessClientSwing {
                                 game.getGameType()));
                     }
                     lobbyPanel.updateGameList(gameInfos);
+                    System.out.println("Updated game list with " + 
+                                      (message.getGames() != null ? message.getGames().size() : 0) + 
+                                      " games");
                 }
                 break;
             default:
+                System.out.println("Unknown message type: " + message.getType());
                 break;
         }
     }
@@ -347,10 +374,11 @@ public class ChessClientSwing {
             // Bekleme durumunu ayarla
             chessBoardPanel.setLocked(true);
             statusLabel.setText("Waiting for an opponent to join your game...");
+            statusLabel.setForeground(UIUtils.WAITING_COLOR);
             readyButton.setEnabled(false);
             readyButton.setText("Waiting for opponent...");
-            
-            // Şu anki oyun ID'sini kaydet
+            readyButton.setForeground(UIUtils.WAITING_COLOR);
+            readyButton.setBackground(Color.white);
             client.setCurrentGameId(gameId);
         }
     }
@@ -374,10 +402,26 @@ public class ChessClientSwing {
                     JOptionPane.YES_NO_OPTION);
             
             if (confirm == JOptionPane.YES_OPTION) {
-                // Send leave game message (using DISCONNECT in this example)
-                Message leaveMessage = new Message(Message.MessageType.DISCONNECT);
-                leaveMessage.setContent(client.getUsername() + " left the game.");
-                client.sendMessage(leaveMessage);
+                // Ensure we have a valid game ID
+                String gameId = client.getCurrentGameId();
+                if (gameId == null || gameId.isEmpty()) {
+                    System.out.println("Warning: Attempting to leave game with null or empty gameId");
+                    
+                    // Sadece lobby'e dön ve oyundan çık
+                    isInGame = false;
+                    cardLayout.show(contentPanel, "lobby");
+                    lobbyPanel.setStatusMessage("Left the game.");
+                    resetGamePanel();
+                    return;
+                }
+                
+                System.out.println("Leaving game with ID: " + gameId);
+                
+                // Always send delete game message to end the game and remove from lobby
+                Message deleteMessage = new Message(Message.MessageType.DELETE_GAME);
+                deleteMessage.setGameId(gameId);
+                deleteMessage.setContent(client.getUsername() + " left the game");
+                client.sendMessage(deleteMessage);
                 
                 // Return to lobby screen
                 isInGame = false;
@@ -412,14 +456,28 @@ public class ChessClientSwing {
             chessBoardPanel.resetBoard();
         }
         
+        // Clear game ID in client
+        if (client != null) {
+            client.setCurrentGameId(null);
+            client.setCurrentGameType(null);
+        }
+        
         // Enable ready button
         if (readyButton != null) {
             readyButton.setEnabled(true);
+            readyButton.setText("👍 I'M READY TO PLAY");
+            UIUtils.setPrimaryButtonStyle(readyButton);
         }
         
         // Clear chat area
         if (chatArea != null) {
             chatArea.setText("");
+        }
+        
+        // Reset status label
+        if (statusLabel != null) {
+            statusLabel.setText("Game ready. Click 'I'M READY TO PLAY' when you're ready.");
+            statusLabel.setForeground(Color.BLACK);
         }
     }
 

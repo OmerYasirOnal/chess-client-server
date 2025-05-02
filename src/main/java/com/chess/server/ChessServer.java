@@ -112,6 +112,9 @@ public class ChessServer {
             case GAME_LIST:
                 handleGameList(sender);
                 break;
+            case DELETE_GAME:
+                handleDeleteGame(message, sender);
+                break;
             case DISCONNECT:
                 // Disconnect is handled by the removeClient method
                 break;
@@ -538,6 +541,9 @@ public class ChessServer {
         );
         confirmMessage.setPlayerInfo(messagePlayerInfo);
         
+        // Oyun ID'sini mesaja ekle (client'ın hatırlaması için)
+        confirmMessage.setGameId(gameId);
+        
         sender.sendMessage(confirmMessage);
         
         // Tüm kullanıcılara oyun listesinin güncellendiğini bildir
@@ -649,5 +655,48 @@ public class ChessServer {
      */
     private void broadcastGameList() {
         broadcast(createLobbyUpdateMessage(), null);
+    }
+    
+    // Bu metod DELETE_GAME mesajını işleyecek
+    private void handleDeleteGame(Message message, ClientHandler sender) {
+        if (message.getGameId() != null) {
+            System.out.println("DELETE_GAME request received for gameId: " + message.getGameId());
+            
+            // Oyunu ID'ye göre bul
+            GameSession gameSession = findGameSessionById(message.getGameId());
+            
+            if (gameSession != null) {
+                System.out.println("Game found: " + gameSession.getSessionId() + ", initiating deletion...");
+                
+                // Oyundaki diğer oyuncuya bilgi ver (eğer varsa)
+                ClientHandler opponent = gameSession.getOpponent(sender);
+                if (opponent != null) {
+                    Message gameEndMessage = new Message(Message.MessageType.GAME_END);
+                    gameEndMessage.setContent(sender.getUsername() + " left the game. Game over.");
+                    opponent.sendMessage(gameEndMessage);
+                }
+                
+                // Oyunu listeden kaldır
+                gameSessions.remove(gameSession);
+                System.out.println("Game session removed. Remaining sessions: " + gameSessions.size());
+                
+                // Oynamakta olan oyuncuları bilgilendir
+                Message confirmationMessage = new Message(Message.MessageType.DELETE_GAME);
+                confirmationMessage.setContent("Game has been deleted");
+                sender.sendMessage(confirmationMessage);
+                
+                // Tüm istemcilere güncellenmiş oyun listesini gönder
+                broadcastGameList();
+            } else {
+                System.out.println("Game not found with ID: " + message.getGameId());
+                
+                // İstemciye oyunun bulunamadığını bildir
+                Message notFoundMessage = new Message(Message.MessageType.DELETE_GAME);
+                notFoundMessage.setContent("Game not found with ID: " + message.getGameId());
+                sender.sendMessage(notFoundMessage);
+            }
+        } else {
+            System.out.println("DELETE_GAME request without gameId");
+        }
     }
 } 
