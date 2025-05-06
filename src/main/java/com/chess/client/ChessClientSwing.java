@@ -255,12 +255,20 @@ public class ChessClientSwing {
                     System.out.println("Game started with ID: " + message.getGameId());
                 }
                 
-                // Oyun başladıysa tahtanın kilidini aç (eğer hazırsa ve sırası geldiyse)
-                if (message.getContent().contains("Game started")) {
-                    ChessPiece.PieceColor turn = chessBoardPanel.getBoard().getCurrentTurn();
-                    if (turn == chessBoardPanel.getBoard().getCurrentTurn()) {
-                        chessBoardPanel.setLocked(false);
-                    }
+                // İkinci oyuncu katıldıysa oyunu başlat
+                if (message.getContent().contains("Game started") || message.getContent().contains("Your opponent:")) {
+                    // Tahtayı aktif et
+                    chessBoardPanel.setStatusMessage("game in progress");
+                    chessBoardPanel.setLocked(false);
+                    
+                    // Oyun başladı durumuna geç
+                    updateStatus("Game started! Your turn: " + (chessBoardPanel.getPlayerColor() == ChessPiece.PieceColor.WHITE ? "White" : "Black"));
+                } 
+                // İlk oyuncu bekleme durumunda
+                else if (message.getContent().contains("Waiting for an opponent")) {
+                    chessBoardPanel.setStatusMessage("waiting for opponent");
+                    chessBoardPanel.setLocked(true);
+                    updateStatus("Waiting for opponent to join...");
                 }
                 break;
             case MOVE:
@@ -274,6 +282,11 @@ public class ChessClientSwing {
                         chessBoardPanel.setLocked(true);
                         updateStatus("Opponent's turn");
                     }
+                } else if (message.getContent() != null && message.getContent().contains("waiting for opponent")) {
+                    // Bu bir hata mesajı - rakip henüz katılmadı
+                    updateStatus("Waiting for opponent to join");
+                    chessBoardPanel.setStatusMessage("waiting for opponent");
+                    chessBoardPanel.setLocked(true);
                 } else {
                     updateStatus(message.getContent());
                 }

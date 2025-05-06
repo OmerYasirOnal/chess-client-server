@@ -154,8 +154,21 @@ public class GamePanel extends JPanel {
     
     public void showGameStartMessage(String message) {
         gameStatusLabel.setText("Game Started");
-        turnLabel.setText(playerColor == ChessPiece.PieceColor.WHITE ? 
-                "White (You) to move" : "Black (Opponent) to move");
+        String turnText = playerColor == ChessPiece.PieceColor.WHITE ? 
+                "White (You) to move" : "Black (Opponent) to move";
+        turnLabel.setText(turnText);
+        
+        // Update the board panel with the game status
+        if (message.contains("Waiting for an opponent")) {
+            boardPanel.setStatusMessage("waiting for opponent");
+        } else if (message.contains("Game started") || message.contains("Your opponent:")) {
+            // İkinci oyuncu katıldığında
+            boardPanel.setStatusMessage("game in progress");
+            // Oyunu başlat mesajı
+            addChatMessage("System", "Game has started! Both players are ready.");
+        } else {
+            boardPanel.setStatusMessage("game in progress");
+        }
         
         // Reset the board to the starting position
         boardPanel.resetBoard();
@@ -231,6 +244,13 @@ public class GamePanel extends JPanel {
     }
     
     public void handleMoveMessage(Message message) {
+        // Check if this is an error message about waiting for opponent
+        if (message.getContent() != null && message.getContent().contains("waiting for opponent")) {
+            addChatMessage("System", message.getContent());
+            boardPanel.setStatusMessage("waiting for opponent");
+            return;
+        }
+        
         // Extract move info from the message
         String moveStr = message.getContent();
         if (moveStr == null || moveStr.isEmpty()) {
@@ -249,23 +269,17 @@ public class GamePanel extends JPanel {
                 int toRow = Character.getNumericValue(toStr.charAt(0));
                 int toCol = Character.getNumericValue(toStr.charAt(1));
                 
-                // Make the move on the board
                 ChessMove move = new ChessMove(fromRow, fromCol, toRow, toCol);
-                boardPanel.makeMove(move);
+                boardPanel.makeRemoteMove(move);
                 
-                // Update move history
-                addMoveToHistory(moveStr);
+                // Update the turn display
+                updateTurnDisplay(boardPanel.getBoard().getCurrentTurn());
                 
-                // Update whose turn it is
-                ChessPiece.PieceColor moveMadeBy = 
-                        message.getSender().equals(client.getUsername()) ? 
-                        playerColor : getOpponentColor();
-                
-                // Update turn label
-                updateTurnDisplay(moveMadeBy);
+                // Add the move to history
+                addMoveToHistory(message.getSender() + ": " + moveStr);
             }
         } catch (Exception e) {
-            System.err.println("Error processing move: " + e.getMessage());
+            System.out.println("Invalid move format: " + moveStr);
         }
     }
     

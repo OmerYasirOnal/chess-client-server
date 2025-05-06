@@ -73,6 +73,9 @@ public class ChessServer {
                 if (opponent != null) {
                     gameSession.getChessBoard().setGameResult(opponent.getUsername() + " won. (Opponent left)");
                     
+                    // Set game status to COMPLETED
+                    gameSession.setStatus(GameStatus.COMPLETED);
+                    
                     Message gameEndMessage = new Message(Message.MessageType.GAME_END);
                     gameEndMessage.setContent(gameSession.getChessBoard().getGameResult());
                     opponent.sendMessage(gameEndMessage);
@@ -184,6 +187,15 @@ public class ChessServer {
     private void handleMove(Message message, ClientHandler sender) {
         GameSession gameSession = findGameSessionByClient(sender);
         if (gameSession != null) {
+            // Check if the game is in progress
+            if (gameSession.getStatus() != GameStatus.IN_PROGRESS) {
+                // Game is not in progress, reject move
+                Message waitingMessage = new Message(Message.MessageType.MOVE);
+                waitingMessage.setContent("Cannot make moves - waiting for opponent to join.");
+                sender.sendMessage(waitingMessage);
+                return;
+            }
+            
             ChessBoard board = gameSession.getChessBoard();
             ChessMove move = message.getMove();
             
@@ -271,6 +283,9 @@ public class ChessServer {
         // Set the first move to white pieces
         board.setCurrentTurn(ChessPiece.PieceColor.WHITE);
         
+        // Update game status to IN_PROGRESS
+        gameSession.setStatus(GameStatus.IN_PROGRESS);
+        
         // Notify players that the game has started
         Message gameStartMessage = new Message(Message.MessageType.GAME_START);
         gameStartMessage.setContent("Game started! Turn: White");
@@ -319,6 +334,9 @@ public class ChessServer {
         ChessBoard board = gameSession.getChessBoard();
         String result = board.getGameResult();
         
+        // Update game status to COMPLETED
+        gameSession.setStatus(GameStatus.COMPLETED);
+        
         Message gameEndMessage = new Message(Message.MessageType.GAME_END);
         gameEndMessage.setContent(result);
         
@@ -350,6 +368,15 @@ public class ChessServer {
     public static void main(String[] args) {
         ChessServer server = new ChessServer();
         server.start();
+    }
+    
+    /**
+     * Enum representing the current status of a game session
+     */
+    private enum GameStatus {
+        WAITING_FOR_OPPONENT,  // Game created but waiting for second player
+        IN_PROGRESS,           // Game has two players and is active
+        COMPLETED              // Game has ended
     }
     
     private static class ClientHandler implements Runnable {
@@ -437,11 +464,13 @@ public class ChessServer {
         private final ChessBoard chessBoard;
         private String sessionId;
         private String gameType;
+        private GameStatus status;
         
         public GameSession(ClientHandler player1, ClientHandler player2) {
             this.player1 = player1;
             this.player2 = player2;
             this.chessBoard = new ChessBoard();
+            this.status = GameStatus.WAITING_FOR_OPPONENT;
         }
         
         public ClientHandler getPlayer1() {
@@ -492,6 +521,14 @@ public class ChessServer {
         
         public void setGameType(String gameType) {
             this.gameType = gameType;
+        }
+        
+        public GameStatus getStatus() {
+            return status;
+        }
+        
+        public void setStatus(GameStatus status) {
+            this.status = status;
         }
     }
     
@@ -549,6 +586,7 @@ public class ChessServer {
         GameSession gameSession = new GameSession(sender, null);
         gameSession.setSessionId(gameId);
         gameSession.setGameType(gameType);
+        gameSession.setStatus(GameStatus.WAITING_FOR_OPPONENT);  // Explicitly set the status
         gameSessions.add(gameSession);
         
         // Oyuncu rengi atama

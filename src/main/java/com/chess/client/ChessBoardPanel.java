@@ -276,8 +276,11 @@ public class ChessBoardPanel extends JPanel {
             }
         }
         
-        // Draw highlights first, then pieces
-        drawValidMoveIndicators(g2d);
+        // Eğer waiting for opponent durumu varsa, taşların seçilebilirliğini devre dışı bırak
+        if (!statusMessage.contains("waiting for opponent")) {
+            // Draw highlights first, then pieces
+            drawValidMoveIndicators(g2d);
+        }
         
         // Draw pieces
         for (int row = 0; row < BOARD_SIZE; row++) {
@@ -289,10 +292,21 @@ public class ChessBoardPanel extends JPanel {
             }
         }
         
-        // Show status message
-        if (!statusMessage.isEmpty()) {
-            drawStateMessage(g2d, statusMessage, statusColor);
+        // "Waiting for opponent" durumunda özel bir uyarı göster
+        if (statusMessage.contains("waiting for opponent")) {
+            // Yarı saydam kırmızı bir arka plan ile "WAITING FOR OPPONENT" yazısı
+            g2d.setColor(new Color(200, 0, 0, 180));
+            g2d.fillRect(0, 0, getWidth(), 40);
+            
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 20));
+            FontMetrics fm = g2d.getFontMetrics();
+            String waitingText = "WAITING FOR OPPONENT TO JOIN";
+            int textWidth = fm.stringWidth(waitingText);
+            int x = (getWidth() - textWidth) / 2;
+            g2d.drawString(waitingText, x, 28);
         }
+        // "Game in progress" durumunda hiçbir yazı gösterme
         
         // Check if game is over
         if (chessBoard.isGameOver()) {
@@ -343,8 +357,28 @@ public class ChessBoardPanel extends JPanel {
     }
     
     private void handleMouseClick(MouseEvent e) {
-        int clickCol = e.getX() / SQUARE_SIZE;
-        int clickRow = e.getY() / SQUARE_SIZE;
+        // First, check if the click is within the board boundaries
+        int clickX = e.getX();
+        int clickY = e.getY();
+        
+        // Ignore clicks outside the chess board
+        if (clickX < 0 || clickX >= BOARD_SIZE * SQUARE_SIZE || 
+            clickY < 0 || clickY >= BOARD_SIZE * SQUARE_SIZE) {
+            return;
+        }
+        
+        // Eğer "waiting for opponent" durumundaysa hiçbir işlem yapma
+        if (statusMessage.contains("waiting for opponent")) {
+            // Sadece kırmızı bir uyarı mesajı göster
+            JOptionPane.showMessageDialog(this, 
+                "Game will start when opponent joins.",
+                "Waiting for Opponent", 
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        int clickCol = clickX / SQUARE_SIZE;
+        int clickRow = clickY / SQUARE_SIZE;
         
         // Debug output
         debugUIState("handleMouseClick-beginning");
@@ -362,9 +396,6 @@ public class ChessBoardPanel extends JPanel {
             return;
         }
         
-        // If no square is selected and we clicked on our own piece
-        ChessPiece clickedPiece = chessBoard.getPiece(clickRow, clickCol);
-        
         // If it's not the player's turn, show red flashing
         if (chessBoard.getCurrentTurn() != playerColor) {
             clearSelectionAndHighlights();
@@ -374,6 +405,9 @@ public class ChessBoardPanel extends JPanel {
             flashTimer.restart();
             return;
         }
+        
+        // If no square is selected and we clicked on our own piece
+        ChessPiece clickedPiece = chessBoard.getPiece(clickRow, clickCol);
         
         if (selectedRow == -1 && selectedCol == -1) {
             // Check if we selected our own piece
@@ -1326,5 +1360,10 @@ public class ChessBoardPanel extends JPanel {
         System.out.println("flashTimer running: " + flashTimer.isRunning());
         System.out.println("flashCount: " + flashCount);
         System.out.println("==============");
+    }
+    
+    public void setStatusMessage(String message) {
+        this.statusMessage = message;
+        repaint();
     }
 } 
