@@ -125,6 +125,38 @@ public class ChessServer {
     
     private void handleConnect(Message message, ClientHandler sender) {
         String username = message.getContent();
+        
+        // Check if username is null or empty
+        if (username == null || username.trim().isEmpty()) {
+            Message errorMessage = new Message(Message.MessageType.ERROR);
+            errorMessage.setContent("Username cannot be empty.");
+            sender.sendMessage(errorMessage);
+            // Disconnect the client with invalid username
+            sender.disconnect();
+            return;
+        }
+        
+        // Check if the username is already in use
+        boolean usernameExists = false;
+        for (ClientHandler client : clients) {
+            // Skip checking against itself and clients without usernames
+            if (client != sender && client.getUsername() != null && username.equals(client.getUsername())) {
+                usernameExists = true;
+                break;
+            }
+        }
+        
+        if (usernameExists) {
+            // Username already exists, send error message
+            Message errorMessage = new Message(Message.MessageType.ERROR);
+            errorMessage.setContent("Username already in use. Please choose a different username.");
+            sender.sendMessage(errorMessage);
+            // Disconnect the client with duplicate username
+            sender.disconnect();
+            return;
+        }
+        
+        // Username is available, proceed with connection
         sender.setUsername(username);
         
         // Set username
@@ -328,6 +360,7 @@ public class ChessServer {
         private String username;
         private PlayerInfo playerInfo;
         private final Gson gson = new Gson();
+        private boolean connected = true;
         
         public ClientHandler(Socket socket, ChessServer server) {
             this.clientSocket = socket;
@@ -341,7 +374,7 @@ public class ChessServer {
                 reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "UTF-8"));
                 
                 String line;
-                while ((line = reader.readLine()) != null) {
+                while (connected && (line = reader.readLine()) != null) {
                     try {
                         Message message = gson.fromJson(line, Message.class);
                         // Null mesaj veya mesaj tipi kontrolü
@@ -385,6 +418,16 @@ public class ChessServer {
         
         public void setPlayerInfo(PlayerInfo playerInfo) {
             this.playerInfo = playerInfo;
+        }
+        
+        // Method to disconnect the client
+        public void disconnect() {
+            this.connected = false;
+            try {
+                clientSocket.close();
+            } catch (IOException e) {
+                System.err.println("Error closing socket during disconnect: " + e.getMessage());
+            }
         }
     }
     

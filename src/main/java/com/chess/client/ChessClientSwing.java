@@ -227,6 +227,21 @@ public class ChessClientSwing {
             case CONNECT:
                 updateStatus(message.getContent());
                 break;
+            case ERROR:
+                // Handle error messages (like username already in use)
+                if (message.getContent() != null && message.getContent().contains("Username already in use")) {
+                    // Show error in login panel
+                    if (loginPanel != null) {
+                        loginPanel.setErrorMessage(message.getContent());
+                        // Make sure we're showing the login panel
+                        cardLayout.show(contentPanel, "login");
+                    }
+                } else if (loginPanel != null) {
+                    loginPanel.setErrorMessage(message.getContent());
+                } else {
+                    updateStatus("Error: " + message.getContent());
+                }
+                break;
             case GAME_START:
                 if (message.getPlayerInfo() != null) {
                     chessBoardPanel.setPlayerColor(message.getPlayerInfo().getColor());

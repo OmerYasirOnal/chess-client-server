@@ -84,7 +84,23 @@ public class ChessClient {
                 while (connected && (inputLine = reader.readLine()) != null) {
                     try {
                         Message message = gson.fromJson(inputLine, Message.class);
-                        if (messageListener != null) {
+                        
+                        // Handle ERROR messages that should disconnect
+                        if (message.getType() == Message.MessageType.ERROR) {
+                            // Pass the message to the listener first
+                            if (messageListener != null) {
+                                messageListener.accept(message);
+                            }
+                            
+                            // When we get an ERROR message about username conflicts, 
+                            // the server will close the connection
+                            if (message.getContent() != null && 
+                                message.getContent().contains("Username already in use")) {
+                                // We will stop the client-side connection after the error message is displayed
+                                connected = false;
+                                break;
+                            }
+                        } else if (messageListener != null) {
                             messageListener.accept(message);
                         }
                     } catch (Exception e) {
@@ -94,7 +110,7 @@ public class ChessClient {
             } catch (IOException e) {
                 if (connected) {
                     System.err.println("Sunucu bağlantısı kesildi: " + e.getMessage());
-                    disconnect();
+                    connected = false;
                 }
             }
         });

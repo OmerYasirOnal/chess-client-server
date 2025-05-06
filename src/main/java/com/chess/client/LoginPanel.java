@@ -112,7 +112,8 @@ public class LoginPanel extends JPanel {
         // Error message
         errorLabel = new JLabel("");
         errorLabel.setForeground(Color.RED);
-        errorLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        errorLabel.setFont(new Font("Arial", Font.BOLD, 13));
+        errorLabel.setHorizontalAlignment(SwingConstants.CENTER);
         gbc.gridx = 0;
         gbc.gridy = 3;
         gbc.gridwidth = 2;
@@ -210,6 +211,18 @@ public class LoginPanel extends JPanel {
     
     public void setErrorMessage(String message) {
         errorLabel.setText(message);
+        // Highlight the username field with error border if it's a username-related error
+        if (message.contains("username") || message.contains("Username")) {
+            usernameField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.RED, 2),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+            // Request focus back to the username field
+            usernameField.requestFocusInWindow();
+        } else {
+            usernameField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        }
     }
     
     // Interface for login process
