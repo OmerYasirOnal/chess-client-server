@@ -15,6 +15,21 @@ v1.5.0 - Removed time control mechanism and implemented auto-start game feature.
 - Intuitive drag and drop piece movement
 - Auto-start when second player joins
 
+## Installation
+
+### macOS Installation
+For macOS users, a DMG installer is available:
+1. Download the `Chess Game-1.5.0.dmg` file from the release directory
+2. Double-click the DMG file to open it
+3. Drag the Chess Game icon to the Applications folder
+4. Open the application from your Applications folder or Launchpad
+
+### Manual Installation
+For other platforms, you can run the application directly using the JAR files:
+1. Ensure you have Java 17 or higher installed
+2. Download the chess-client-1.5.0.jar file
+3. Run the client using the commands provided in the "Running the Application" section
+
 ## How to Play with Multiple Clients
 
 You can play the game with two chess clients, either on the same computer or on different computers:
@@ -122,6 +137,17 @@ When the client starts, you'll need to enter:
 - Your username
 - Server address (localhost or remote IP)
 - Port number (default: 9999)
+
+## Building the macOS DMG
+
+To build the macOS DMG installer:
+
+```bash
+# Make sure you have JDK 14+ with jpackage installed
+./build-macos-dmg.sh
+```
+
+This will create a DMG file at `release/macos/Chess Game-1.5.0.dmg`.
 
 ## Screenshots
 

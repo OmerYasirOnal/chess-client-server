@@ -17,7 +17,6 @@ import com.chess.common.ChessBoard;
 import com.chess.common.ChessMove;
 import com.chess.common.ChessPiece;
 import com.chess.common.Message;
-import com.chess.common.PlayerInfo;
 import com.google.gson.Gson;
 
 public class ChessServer {
@@ -127,56 +126,42 @@ public class ChessServer {
     }
     
     private void handleConnect(Message message, ClientHandler sender) {
+        // Kullanıcı adını al ve istemciye atama
         String username = message.getContent();
-        
-        // Check if username is null or empty
         if (username == null || username.trim().isEmpty()) {
-            Message errorMessage = new Message(Message.MessageType.ERROR);
-            errorMessage.setContent("Username cannot be empty.");
-            sender.sendMessage(errorMessage);
-            // Disconnect the client with invalid username
-            sender.disconnect();
+            Message errorMsg = new Message(Message.MessageType.ERROR, "Username cannot be empty");
+            sender.sendMessage(errorMsg);
             return;
         }
-        
-        // Check if the username is already in use
-        boolean usernameExists = false;
+
+        // Check if username is already in use
         for (ClientHandler client : clients) {
-            // Skip checking against itself and clients without usernames
-            if (client != sender && client.getUsername() != null && username.equals(client.getUsername())) {
-                usernameExists = true;
-                break;
+            if (client != sender && username.equals(client.getUsername())) {
+                Message errorMsg = new Message(Message.MessageType.ERROR, "Username already in use");
+                sender.sendMessage(errorMsg);
+                return;
             }
         }
-        
-        if (usernameExists) {
-            // Username already exists, send error message
-            Message errorMessage = new Message(Message.MessageType.ERROR);
-            errorMessage.setContent("Username already in use. Please choose a different username.");
-            sender.sendMessage(errorMessage);
-            // Disconnect the client with duplicate username
-            sender.disconnect();
-            return;
-        }
-        
-        // Username is available, proceed with connection
+
+        // Set username for this client
         sender.setUsername(username);
         
-        // Set username
-        PlayerInfo playerInfo = new PlayerInfo(username);
+        // Create player info object - null için null renk kullanıyoruz
+        Message.PlayerInfo playerInfo = new Message.PlayerInfo(username, null);
         sender.setPlayerInfo(playerInfo);
         
-        // Notify client about successful connection
-        Message connectionMessage = new Message(Message.MessageType.CONNECT);
-        connectionMessage.setContent("Connected to server as " + username);
-        sender.sendMessage(connectionMessage);
+        // Create confirmation message
+        Message confirmMessage = new Message(Message.MessageType.CONNECT);
+        confirmMessage.setContent("Connected as " + username);
+        sender.sendMessage(confirmMessage);
         
-        // Notify other users
+        // Broadcast to other clients
         Message broadcastMessage = new Message(Message.MessageType.CONNECT);
-        broadcastMessage.setContent(username + " connected.");
+        broadcastMessage.setContent(username + " has joined");
+        broadcastMessage.setSender("Server");
         broadcast(broadcastMessage, sender);
         
-        System.out.println(username + " connected. Active connections: " + clients.size());
+        System.out.println("New client connected: " + username);
     }
     
     private void handleReady(Message message, ClientHandler sender) {
@@ -241,39 +226,42 @@ public class ChessServer {
     }
     
     private void createGameSession(ClientHandler player1, ClientHandler player2) {
-        // Create a new game session
         GameSession gameSession = new GameSession(player1, player2);
         gameSessions.add(gameSession);
         
-        // Assign colors to players
-        player1.setPlayerInfo(new PlayerInfo(player1.getUsername(), ChessPiece.PieceColor.WHITE));
-        player2.setPlayerInfo(new PlayerInfo(player2.getUsername(), ChessPiece.PieceColor.BLACK));
+        // Set player colors
+        player1.setPlayerInfo(new Message.PlayerInfo(player1.getUsername(), ChessPiece.PieceColor.WHITE));
+        player2.setPlayerInfo(new Message.PlayerInfo(player2.getUsername(), ChessPiece.PieceColor.BLACK));
         
-        // Assign player names to ChessBoard
-        ChessBoard board = gameSession.getChessBoard();
-        board.setWhitePlayerName(player1.getUsername());
-        board.setBlackPlayerName(player2.getUsername());
-        
-        // Notify players about the match
+        // Create and send game start message
+        // For player 1
         Message matchMessage1 = new Message(Message.MessageType.GAME_START);
-        matchMessage1.setContent("Your opponent: " + player2.getUsername() + ". Your color: White");
+        matchMessage1.setContent("Game started! Your opponent: " + player2.getUsername() + ". You play as White.");
         
-        // Create a Message.PlayerInfo from PlayerInfo
+        // Create a Message.PlayerInfo
         Message.PlayerInfo messagePlayerInfo1 = new Message.PlayerInfo(player1.getUsername(), player1.getPlayerInfo().getColor());
         matchMessage1.setPlayerInfo(messagePlayerInfo1);
         
+        // Set the game ID
+        matchMessage1.setGameId(gameSession.getSessionId());
+        
         player1.sendMessage(matchMessage1);
         
+        // For player 2
         Message matchMessage2 = new Message(Message.MessageType.GAME_START);
-        matchMessage2.setContent("Your opponent: " + player1.getUsername() + ". Your color: Black");
+        matchMessage2.setContent("Game started! Your opponent: " + player1.getUsername() + ". You play as Black.");
         
-        // Create a Message.PlayerInfo from PlayerInfo
+        // Create a Message.PlayerInfo
         Message.PlayerInfo messagePlayerInfo2 = new Message.PlayerInfo(player2.getUsername(), player2.getPlayerInfo().getColor());
         matchMessage2.setPlayerInfo(messagePlayerInfo2);
         
+        // Set the game ID
+        matchMessage2.setGameId(gameSession.getSessionId());
+        
         player2.sendMessage(matchMessage2);
         
-        System.out.println("New game started: " + player1.getUsername() + " vs " + player2.getUsername());
+        // Start the game logic
+        startGame(gameSession);
     }
     
     private void startGame(GameSession gameSession) {
@@ -298,8 +286,9 @@ public class ChessServer {
     }
     
     private boolean isValidMove(ChessMove move, ChessBoard board, ClientHandler player) {
-        // Check if it's the player's turn
-        ChessPiece.PieceColor playerColor = player.getPlayerInfo().getColor();
+        // First, check if it's the player's turn
+        Message.PlayerInfo playerInfo = player.getPlayerInfo();
+        ChessPiece.PieceColor playerColor = playerInfo.getColor();
         ChessPiece.PieceColor currentTurn = board.getCurrentTurn();
         
         if (playerColor != currentTurn) {
@@ -385,7 +374,7 @@ public class ChessServer {
         private PrintWriter writer;
         private BufferedReader reader;
         private String username;
-        private PlayerInfo playerInfo;
+        private Message.PlayerInfo playerInfo;
         private final Gson gson = new Gson();
         private boolean connected = true;
         
@@ -439,11 +428,11 @@ public class ChessServer {
             this.username = username;
         }
         
-        public PlayerInfo getPlayerInfo() {
+        public Message.PlayerInfo getPlayerInfo() {
             return playerInfo;
         }
         
-        public void setPlayerInfo(PlayerInfo playerInfo) {
+        public void setPlayerInfo(Message.PlayerInfo playerInfo) {
             this.playerInfo = playerInfo;
         }
         
@@ -503,8 +492,10 @@ public class ChessServer {
         }
         
         public boolean isAllPlayersReady() {
-            return player1.getPlayerInfo().isReady() && 
-                   player2.getPlayerInfo().isReady();
+            // Both players must be present and ready
+            return player1 != null && player2 != null &&
+                   player1.getPlayerInfo() != null && player2.getPlayerInfo() != null &&
+                   player1.getPlayerInfo().isReady() && player2.getPlayerInfo().isReady();
         }
         
         public String getSessionId() {
@@ -590,7 +581,7 @@ public class ChessServer {
         gameSessions.add(gameSession);
         
         // Oyuncu rengi atama
-        sender.setPlayerInfo(new PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.WHITE));
+        sender.setPlayerInfo(new Message.PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.WHITE));
         
         // Oyun tahtasına oyuncu adlarını atama
         ChessBoard board = gameSession.getChessBoard();
@@ -664,7 +655,7 @@ public class ChessServer {
             player2Message.setGameId(gameId);
             player2Message.setGameType(session.getGameType());
             
-            // Set both players as ready automatically
+            // Hazır durumunu güncelle
             session.getPlayer1().getPlayerInfo().setReady(true);
             sender.getPlayerInfo().setReady(true);
             

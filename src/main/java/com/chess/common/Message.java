@@ -110,10 +110,12 @@ public class Message implements Serializable {
         
         private String name;
         private ChessPiece.PieceColor color;
+        private boolean isReady;
 
         public PlayerInfo(String name, ChessPiece.PieceColor color) {
             this.name = name;
             this.color = color;
+            this.isReady = false;
         }
 
         public String getName() {
@@ -122,6 +124,14 @@ public class Message implements Serializable {
 
         public ChessPiece.PieceColor getColor() {
             return color;
+        }
+        
+        public boolean isReady() {
+            return isReady;
+        }
+        
+        public void setReady(boolean ready) {
+            this.isReady = ready;
         }
     }
     

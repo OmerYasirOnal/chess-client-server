@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 import javax.swing.Box;
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -143,7 +144,14 @@ public class ChessClientSwing {
         chessBoardPanel = new ChessBoardPanel(client);
         // Başlangıçta tahtayı kilitli tut (oyuncular hazır olana kadar)
         chessBoardPanel.setLocked(true);
-        gamePanel.add(chessBoardPanel, BorderLayout.CENTER);
+        
+        // Satranç tahtasını ortalamak için bir sarıcı panel oluşturuyoruz
+        JPanel boardWrapper = new JPanel(new BorderLayout());
+        // Üst, sol, alt ve sağ kenarlardan boşluk veriyoruz
+        boardWrapper.setBorder(BorderFactory.createEmptyBorder(30, 100, 30, 30));
+        boardWrapper.add(chessBoardPanel, BorderLayout.CENTER);
+        
+        gamePanel.add(boardWrapper, BorderLayout.CENTER);
 
         // Right panel
         JPanel rightPanel = new JPanel();
