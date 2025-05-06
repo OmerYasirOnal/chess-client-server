@@ -48,7 +48,6 @@ public class ChessClientSwing {
     private JTextArea chatArea;
     private JTextField chatInput;
     private ChessBoardPanel chessBoardPanel;
-    private JButton readyButton;
     
     private ChessClient client;
     private boolean isInGame = false;
@@ -186,25 +185,6 @@ public class ChessClientSwing {
         rightPanel.add(chatInput);
         rightPanel.add(Box.createVerticalStrut(20));
 
-        // Buttons
-        readyButton = new JButton("👍 I'M READY TO PLAY");
-        UIUtils.setPrimaryButtonStyle(readyButton);
-        readyButton.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
-        UIUtils.setButtonSize(readyButton, 230, 40);
-        readyButton.addActionListener(e -> {
-            client.sendReadyMessage();
-            readyButton.setEnabled(false);
-            readyButton.setText("Waiting for opponent...");
-            readyButton.setForeground(UIUtils.WAITING_COLOR);
-            readyButton.setBackground(Color.GRAY);
-            statusLabel.setText("You are ready. Waiting for your opponent to be ready...");
-            statusLabel.setForeground(UIUtils.WAITING_COLOR);
-            
-            // Tahtayı kilitli tut
-            chessBoardPanel.setLocked(true);
-        });
-        rightPanel.add(readyButton);
-        
         // Leave game button
         JButton leaveButton = new JButton("Leave Game");
         UIUtils.setDangerButtonStyle(leaveButton);
@@ -291,25 +271,6 @@ public class ChessClientSwing {
             case CHAT:
                 chatArea.append(message.getSender() + ": " + message.getContent() + "\n");
                 break;
-            case READY:
-                updateStatus(message.getContent());
-                // Rakip hazır olduğunda bildir
-                if (message.getContent().contains("is ready")) {
-                    if (readyButton.isEnabled()) {
-                        // Diğer oyuncu hazır, biz değiliz
-                        readyButton.setText("👉 CLICK TO READY UP 👈");
-                        readyButton.setFont(new Font("Arial", Font.BOLD, 14));
-                        readyButton.setBackground(UIUtils.SUCCESS_COLOR);
-                        readyButton.setForeground(Color.WHITE);
-                        statusLabel.setText("Opponent is ready. Please click Ready Up to start the game!");
-                        statusLabel.setForeground(UIUtils.SUCCESS_COLOR);
-                    } else {
-                        // Her iki oyuncu da hazır
-                        statusLabel.setText("Both players ready. Game will start soon...");
-                        statusLabel.setForeground(UIUtils.SUCCESS_COLOR);
-                    }
-                }
-                break;
             case DISCONNECT:
                 updateStatus(message.getContent());
                 if (isInGame) {
@@ -375,10 +336,6 @@ public class ChessClientSwing {
             chessBoardPanel.setLocked(true);
             statusLabel.setText("Waiting for an opponent to join your game...");
             statusLabel.setForeground(UIUtils.WAITING_COLOR);
-            readyButton.setEnabled(false);
-            readyButton.setText("Waiting for opponent...");
-            readyButton.setForeground(UIUtils.WAITING_COLOR);
-            readyButton.setBackground(Color.white);
             client.setCurrentGameId(gameId);
         }
     }
@@ -462,21 +419,9 @@ public class ChessClientSwing {
             client.setCurrentGameType(null);
         }
         
-        // Enable ready button
-        if (readyButton != null) {
-            readyButton.setEnabled(true);
-            readyButton.setText("👍 I'M READY TO PLAY");
-            UIUtils.setPrimaryButtonStyle(readyButton);
-        }
-        
-        // Clear chat area
-        if (chatArea != null) {
-            chatArea.setText("");
-        }
-        
         // Reset status label
         if (statusLabel != null) {
-            statusLabel.setText("Game ready. Click 'I'M READY TO PLAY' when you're ready.");
+            statusLabel.setText("Game connected. Waiting for the game to start...");
             statusLabel.setForeground(Color.BLACK);
         }
     }

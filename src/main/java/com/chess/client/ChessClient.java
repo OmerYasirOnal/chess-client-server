@@ -115,12 +115,6 @@ public class ChessClient {
         sendMessage(chatMessage);
     }
     
-    public void sendReadyMessage() {
-        Message readyMessage = new Message(Message.MessageType.READY);
-        readyMessage.setContent(username + " hazır.");
-        sendMessage(readyMessage);
-    }
-    
     public void sendMoveMessage(ChessMove move) {
         Message moveMessage = new Message(Message.MessageType.MOVE);
         moveMessage.setMove(move);

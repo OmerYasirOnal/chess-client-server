@@ -145,23 +145,8 @@ public class ChessServer {
     }
     
     private void handleReady(Message message, ClientHandler sender) {
-        GameSession gameSession = findGameSessionByClient(sender);
-        if (gameSession != null) {
-            sender.getPlayerInfo().setReady(true);
-            
-            // Notify the other player
-            Message readyMessage = new Message(Message.MessageType.READY);
-            readyMessage.setContent(sender.getUsername() + " is ready.");
-            ClientHandler opponent = gameSession.getOpponent(sender);
-            if (opponent != null) {
-                opponent.sendMessage(readyMessage);
-            }
-            
-            // If both players are ready, start the game
-            if (gameSession.isAllPlayersReady()) {
-                startGame(gameSession);
-            }
-        }
+        // This method is now a no-op since we're removing the ready button functionality
+        // Games will automatically start when a player joins
     }
     
     private void handleMove(Message message, ClientHandler sender) {
@@ -471,9 +456,9 @@ public class ChessServer {
     private void handleGameList(ClientHandler sender) {
         List<Message.GameInfo> gameInfos = new ArrayList<>();
         
-        // Henüz oyun içinde olmayan oyun oturumlarını bul
+        // Find game sessions that only have one player (waiting for opponent)
         for (GameSession session : gameSessions) {
-            if (!session.isAllPlayersReady() && session.getPlayer2() == null) {
+            if (session.getPlayer2() == null) {
                 Message.GameInfo gameInfo = new Message.GameInfo(
                         session.getSessionId(),
                         session.getPlayer1().getUsername(),
@@ -483,7 +468,7 @@ public class ChessServer {
             }
         }
         
-        // Oyun listesini istemciye gönder
+        // Send game list to client
         Message response = new Message(Message.MessageType.GAME_LIST_RESPONSE);
         response.setGames(gameInfos);
         sender.sendMessage(response);
@@ -554,58 +539,62 @@ public class ChessServer {
     
     // Var olan bir oyuna katıl
     private void handleJoinGame(Message message, ClientHandler sender) {
-        // Find the game session by ID
-        String gameId = message.getGameId();
-        if (gameId == null) {
-            sendJoinGameFailedMessage(sender, "Game ID is missing");
+        // Check if client is already in a game
+        if (isClientInGame(sender)) {
+            sendJoinGameFailedMessage(sender, "You are already in a game.");
             return;
         }
         
-        GameSession gameSession = findGameSessionById(gameId);
-        if (gameSession == null) {
-            sendJoinGameFailedMessage(sender, "Game not found");
+        // Find the game session
+        String gameId = message.getGameId();
+        GameSession session = findGameSessionById(gameId);
+        
+        if (session == null) {
+            sendJoinGameFailedMessage(sender, "Game not found.");
             return;
         }
         
         // Check if the game already has two players
-        if (gameSession.getPlayer2() != null) {
-            sendJoinGameFailedMessage(sender, "Game is full");
+        if (session.getPlayer2() != null) {
+            sendJoinGameFailedMessage(sender, "Game is full.");
             return;
         }
         
-        // Add the player to the game session
-        gameSession.setPlayer2(sender);
+        // Join the game
+        session.setPlayer2(sender);
         
-        // Assign colors
-        sender.setPlayerInfo(new PlayerInfo(sender.getUsername(), ChessPiece.PieceColor.BLACK));
+        // Create and send the game board
+        createGameSession(session.getPlayer1(), sender);
         
-        // Notify the player that joined
-        Message joinSuccessMessage = new Message(Message.MessageType.GAME_START);
-        joinSuccessMessage.setContent("Your opponent: " + gameSession.getPlayer1().getUsername() + ". Your color: Black");
+        // Set the game ID and type in the session
+        GameSession updatedSession = findGameSessionByClient(sender);
+        if (updatedSession != null) {
+            updatedSession.setSessionId(gameId);
+            updatedSession.setGameType(session.getGameType());
+            
+            // Send a game start message to both players with the game ID
+            Message player1Message = new Message(Message.MessageType.GAME_START);
+            player1Message.setContent("Game started with " + sender.getUsername());
+            player1Message.setGameId(gameId);
+            player1Message.setGameType(session.getGameType());
+            
+            Message player2Message = new Message(Message.MessageType.GAME_START);
+            player2Message.setContent("Game started with " + session.getPlayer1().getUsername());
+            player2Message.setGameId(gameId);
+            player2Message.setGameType(session.getGameType());
+            
+            // Set both players as ready automatically
+            session.getPlayer1().getPlayerInfo().setReady(true);
+            sender.getPlayerInfo().setReady(true);
+            
+            // Start the game immediately
+            startGame(updatedSession);
+            
+            updatedSession.getPlayer1().sendMessage(player1Message);
+            updatedSession.getPlayer2().sendMessage(player2Message);
+        }
         
-        // Create a Message.PlayerInfo from PlayerInfo
-        Message.PlayerInfo messagePlayerInfo = new Message.PlayerInfo(sender.getUsername(), sender.getPlayerInfo().getColor());
-        joinSuccessMessage.setPlayerInfo(messagePlayerInfo);
-        joinSuccessMessage.setGameId(gameId);
-        sender.sendMessage(joinSuccessMessage);
-        
-        // Notify the host
-        Message opponentJoinedMessage = new Message(Message.MessageType.GAME_START);
-        opponentJoinedMessage.setContent("Your opponent: " + sender.getUsername() + ". Your color: White");
-        
-        // Create a Message.PlayerInfo from PlayerInfo
-        Message.PlayerInfo hostPlayerInfo = new Message.PlayerInfo(gameSession.getPlayer1().getUsername(), gameSession.getPlayer1().getPlayerInfo().getColor());
-        opponentJoinedMessage.setPlayerInfo(hostPlayerInfo);
-        opponentJoinedMessage.setGameId(gameId);
-        gameSession.getPlayer1().sendMessage(opponentJoinedMessage);
-        
-        // Set the first move to white pieces
-        gameSession.getChessBoard().setCurrentTurn(ChessPiece.PieceColor.WHITE);
-        
-        // Automatically start the game now that 2 players have joined
-        startGame(gameSession);
-        
-        // Update the game list for other clients
+        // Update the game list for all clients
         broadcastGameList();
     }
     
