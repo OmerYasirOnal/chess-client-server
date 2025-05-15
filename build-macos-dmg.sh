@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Ensure the JAR file exists
-CLIENT_JAR="target/chess-client-1.5.0.jar"
+CLIENT_JAR="target/chess-client-1.5.1.jar"
 if [ ! -f "$CLIENT_JAR" ]; then
     echo "Error: Client JAR file not found at $CLIENT_JAR"
     echo "Building the client JAR first..."
@@ -43,9 +43,9 @@ fi
 # Build the DMG using jpackage
 jpackage \
     --input target \
-    --main-jar chess-client-1.5.0.jar \
+    --main-jar chess-client-1.5.1.jar \
     --name "Chess Game" \
-    --app-version "1.5.0" \
+    --app-version "1.5.1" \
     --vendor "Chess Game Project" \
     --copyright "Copyright © 2023" \
     --description "Networked Chess Game Client" \
@@ -56,4 +56,4 @@ jpackage \
 
 echo ""
 echo "DMG creation completed!"
-echo "Your DMG file is available at: release/macos/Chess-Game-1.5.0.dmg" 
+echo "Your DMG file is available at: release/macos/Chess-Game-1.5.1.dmg" 

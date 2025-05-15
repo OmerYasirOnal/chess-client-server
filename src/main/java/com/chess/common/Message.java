@@ -8,7 +8,8 @@ public class Message implements Serializable {
     
     public enum MessageType {
         CONNECT, DISCONNECT, MOVE, READY, GAME_START, GAME_END, CHAT, 
-        CREATE_GAME, JOIN_GAME, GAME_LIST, GAME_LIST_RESPONSE, DELETE_GAME, ERROR
+        CREATE_GAME, JOIN_GAME, GAME_LIST, GAME_LIST_RESPONSE, DELETE_GAME, ERROR,
+        PING, PONG
     }
     
     private MessageType type;

@@ -85,6 +85,14 @@ public class ChessClient {
                     try {
                         Message message = gson.fromJson(inputLine, Message.class);
                         
+                        // Handle ping messages automatically
+                        if (message.getType() == Message.MessageType.PING) {
+                            // Respond with a pong message
+                            Message pongMessage = new Message(Message.MessageType.PONG);
+                            sendMessage(pongMessage);
+                            continue; // Don't pass ping messages to the client's listener
+                        }
+                        
                         // Handle ERROR messages that should disconnect
                         if (message.getType() == Message.MessageType.ERROR) {
                             // Pass the message to the listener first

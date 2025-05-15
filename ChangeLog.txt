@@ -1,5 +1,16 @@
 # Multiplayer Chess Application - Changelog
 
+## v1.5.1 - 2025-05-15
+* Improved connection management system
+  - Added client-server heartbeat mechanism with ping/pong messages
+  - Implemented automatic detection and cleanup of disconnected clients
+  - Fixed issues with username availability after player disconnections
+  - Added socket timeouts for faster connection state detection
+  - Implemented periodic client checker for stale connections
+* Enhanced player experience during opponent disconnections
+* Optimized server resources through better client lifecycle management
+* Improved server stability and reliability
+
 ## v1.5.0 - 2025-05-05
 * Removed time control mechanism
 * Implemented auto-start game feature

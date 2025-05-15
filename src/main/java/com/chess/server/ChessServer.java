@@ -8,10 +8,13 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import com.chess.common.ChessBoard;
 import com.chess.common.ChessMove;
@@ -25,11 +28,15 @@ public class ChessServer {
     private final CopyOnWriteArrayList<ClientHandler> clients = new CopyOnWriteArrayList<>();
     private final List<GameSession> gameSessions = new ArrayList<>();
     private final Gson gson = new Gson();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Chess server started on port " + PORT + "...");
             System.out.println("Waiting for connections...");
+            
+            // Start the client checker that runs every 60 seconds
+            startClientChecker();
             
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -44,6 +51,39 @@ public class ChessServer {
             e.printStackTrace();
         } finally {
             pool.shutdown();
+            scheduler.shutdown();
+        }
+    }
+    
+    private void startClientChecker() {
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                checkAndCleanupClients();
+            } catch (Exception e) {
+                System.err.println("Error in client checker: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }, 60, 60, TimeUnit.SECONDS);
+        
+        System.out.println("Client checker scheduled to run every 60 seconds");
+    }
+    
+    private void checkAndCleanupClients() {
+        int disconnectedCount = 0;
+        
+        for (Iterator<ClientHandler> it = clients.iterator(); it.hasNext();) {
+            ClientHandler client = it.next();
+            if (!client.isConnected()) {
+                System.out.println("Client checker removing disconnected client: " + 
+                    (client.getUsername() != null ? client.getUsername() : "unknown"));
+                
+                removeClient(client);
+                disconnectedCount++;
+            }
+        }
+        
+        if (disconnectedCount > 0) {
+            System.out.println("Client checker removed " + disconnectedCount + " disconnected clients");
         }
     }
     
@@ -134,13 +174,21 @@ public class ChessServer {
             return;
         }
 
-        // Check if username is already in use
+        // Check if username is already in use by an active client
+        boolean usernameInUse = false;
         for (ClientHandler client : clients) {
-            if (client != sender && username.equals(client.getUsername())) {
-                Message errorMsg = new Message(Message.MessageType.ERROR, "Username already in use");
-                sender.sendMessage(errorMsg);
-                return;
+            if (client != sender && 
+                username.equals(client.getUsername()) && 
+                client.isConnected()) {
+                usernameInUse = true;
+                break;
             }
+        }
+
+        if (usernameInUse) {
+            Message errorMsg = new Message(Message.MessageType.ERROR, "Username already in use");
+            sender.sendMessage(errorMsg);
+            return;
         }
 
         // Set username for this client
@@ -377,10 +425,19 @@ public class ChessServer {
         private Message.PlayerInfo playerInfo;
         private final Gson gson = new Gson();
         private boolean connected = true;
+        private long lastActiveTime;
+        private static final long IDLE_TIMEOUT = 300000; // 5 minutes in milliseconds
         
         public ClientHandler(Socket socket, ChessServer server) {
             this.clientSocket = socket;
             this.server = server;
+            this.lastActiveTime = System.currentTimeMillis();
+            try {
+                // Set a socket timeout to detect disconnected clients faster
+                this.clientSocket.setSoTimeout(30000); // 30 seconds timeout
+            } catch (IOException e) {
+                System.err.println("Error setting socket timeout: " + e.getMessage());
+            }
         }
         
         @Override
@@ -389,8 +446,14 @@ public class ChessServer {
                 writer = new PrintWriter(new OutputStreamWriter(clientSocket.getOutputStream(), "UTF-8"), true);
                 reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "UTF-8"));
                 
+                // Start a ping thread
+                startPingThread();
+                
                 String line;
                 while (connected && (line = reader.readLine()) != null) {
+                    // Update last active time on any message received
+                    updateLastActiveTime();
+                    
                     try {
                         Message message = gson.fromJson(line, Message.class);
                         // Null mesaj veya mesaj tipi kontrolü
@@ -398,6 +461,13 @@ public class ChessServer {
                             System.err.println("Geçersiz mesaj alındı: " + line);
                             continue;
                         }
+                        
+                        // Handle pong message
+                        if (message.getType() == Message.MessageType.PONG) {
+                            // Do nothing, just update the last active time
+                            continue;
+                        }
+                        
                         server.handleMessage(message, this);
                     } catch (Exception e) {
                         System.err.println("Mesaj işlenirken hata oluştu: " + e.getMessage());
@@ -405,15 +475,70 @@ public class ChessServer {
                     }
                 }
             } catch (IOException e) {
-                System.err.println("Error handling client: " + e.getMessage());
+                System.err.println("Connection error with client " + 
+                    (username != null ? username : "unknown") + ": " + e.getMessage());
             } finally {
-                try {
-                    clientSocket.close();
-                } catch (IOException e) {
-                    System.err.println("Error closing socket: " + e.getMessage());
-                }
-                server.removeClient(this);
+                cleanup();
             }
+        }
+        
+        private void startPingThread() {
+            Thread pingThread = new Thread(() -> {
+                while (connected) {
+                    try {
+                        // Sleep for 25 seconds
+                        Thread.sleep(25000);
+                        
+                        // Check if client is idle
+                        if (System.currentTimeMillis() - lastActiveTime > IDLE_TIMEOUT) {
+                            System.out.println("Client " + (username != null ? username : "unknown") + 
+                                " has been idle for too long. Disconnecting.");
+                            break;
+                        }
+                        
+                        // Send ping message
+                        if (connected) {
+                            Message pingMessage = new Message(Message.MessageType.PING);
+                            sendMessage(pingMessage);
+                        }
+                    } catch (InterruptedException e) {
+                        break;
+                    } catch (Exception e) {
+                        System.err.println("Error in ping thread: " + e.getMessage());
+                        break;
+                    }
+                }
+                
+                // If we exit the loop, disconnect the client
+                if (connected) {
+                    cleanup();
+                }
+            });
+            
+            pingThread.setDaemon(true);
+            pingThread.start();
+        }
+        
+        private void updateLastActiveTime() {
+            this.lastActiveTime = System.currentTimeMillis();
+        }
+        
+        private void cleanup() {
+            connected = false;
+            try {
+                if (clientSocket != null && !clientSocket.isClosed()) {
+                    clientSocket.close();
+                }
+            } catch (IOException e) {
+                System.err.println("Error closing socket: " + e.getMessage());
+            }
+            
+            // Ensure client is removed from the server
+            server.removeClient(this);
+            
+            // Log the cleanup
+            System.out.println("Client cleanup completed for: " + 
+                (username != null ? username : "unknown"));
         }
         
         public void sendMessage(Message message) {
@@ -444,6 +569,10 @@ public class ChessServer {
             } catch (IOException e) {
                 System.err.println("Error closing socket during disconnect: " + e.getMessage());
             }
+        }
+        
+        public boolean isConnected() {
+            return connected && System.currentTimeMillis() - lastActiveTime < IDLE_TIMEOUT;
         }
     }
     
