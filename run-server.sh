@@ -14,4 +14,4 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "${GREEN}Starting Chess Server...${NC}"
-java -jar target/chess-server-1.5.0.jar 
+java -jar target/chess-server-1.5.1.jar 

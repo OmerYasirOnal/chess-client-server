@@ -23,7 +23,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Check that jar file exists
-JAR_FILE="target/chess-server-1.5.0.jar"
+JAR_FILE="target/chess-server-1.5.1.jar"
 if [ ! -f "$JAR_FILE" ]; then
     echo -e "${RED}JAR file not found after build! Aborting deployment.${NC}"
     exit 1

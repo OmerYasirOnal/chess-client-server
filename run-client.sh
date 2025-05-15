@@ -26,4 +26,4 @@ fi
 
 echo -e "${GREEN}Starting Chess Client...${NC}"
 echo -e "${GREEN}Server: $SERVER:$DEFAULT_PORT${NC}"
-java -jar target/chess-client-1.5.0.jar 
+java -jar target/chess-client-1.5.1.jar 
