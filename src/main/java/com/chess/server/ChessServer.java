@@ -219,7 +219,13 @@ public class ChessServer {
         Message broadcastMessage = new Message(Message.MessageType.CONNECT);
         broadcastMessage.setContent(username + " has joined");
         broadcastMessage.setSender("Server");
-        broadcast(broadcastMessage, sender);
+        
+        // Send to clients who are not the sender AND not currently in a game
+        for (ClientHandler client : clients) {
+            if (client != sender && !isClientInGame(client)) {
+                client.sendMessage(broadcastMessage);
+            }
+        }
         
         System.out.println("New client connected: " + username);
     }
