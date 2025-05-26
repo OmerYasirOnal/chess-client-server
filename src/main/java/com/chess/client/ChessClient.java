@@ -160,6 +160,27 @@ public class ChessClient {
         sendMessage(drawMessage);
     }
     
+    public void handleOpponentDisconnection() {
+        Message disconnectMessage = new Message(Message.MessageType.DISCONNECT);
+        disconnectMessage.setContent("Opponent disconnected");
+        disconnectMessage.setSender(username);
+        sendMessage(disconnectMessage);
+    }
+    
+    public void handleGameCancellation() {
+        Message cancelMessage = new Message(Message.MessageType.GAME_END);
+        cancelMessage.setContent("Game cancelled");
+        cancelMessage.setSender(username);
+        sendMessage(cancelMessage);
+    }
+    
+    public void handleGameStateChange(String state) {
+        Message stateMessage = new Message(Message.MessageType.GAME_STATE);
+        stateMessage.setContent(state);
+        stateMessage.setSender(username);
+        sendMessage(stateMessage);
+    }
+    
     public void setMessageListener(Consumer<Message> listener) {
         this.messageListener = listener;
     }

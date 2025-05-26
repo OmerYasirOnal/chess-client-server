@@ -102,27 +102,36 @@ public class ChessServer {
         // Check client's game session
         GameSession gameSession = findGameSessionByClient(client);
         if (gameSession != null) {
-            Message disconnectMessage = new Message(Message.MessageType.DISCONNECT);
-            disconnectMessage.setContent(client.getUsername() + " left the game.");
-            broadcast(disconnectMessage, null);
+            // Get the opponent before removing the session
+            ClientHandler opponent = gameSession.getOpponent(client);
             
-            // If the game is still in progress, notify the other player about the win
-            if (!gameSession.getChessBoard().isGameOver()) {
-                ClientHandler opponent = gameSession.getOpponent(client);
+            // If the game is still in progress, notify the other player about the disconnection
+            if (gameSession.getStatus() == GameStatus.IN_PROGRESS) {
+                // Send disconnect message to opponent
+                Message disconnectMessage = new Message(Message.MessageType.DISCONNECT);
+                disconnectMessage.setContent(client.getUsername() + " disconnected from the game.");
                 if (opponent != null) {
-                    gameSession.getChessBoard().setGameResult(opponent.getUsername() + " won. (Opponent left)");
-                    
-                    // Set game status to COMPLETED
-                    gameSession.setStatus(GameStatus.COMPLETED);
-                    
-                    Message gameEndMessage = new Message(Message.MessageType.GAME_END);
-                    gameEndMessage.setContent(gameSession.getChessBoard().getGameResult());
-                    opponent.sendMessage(gameEndMessage);
+                    opponent.sendMessage(disconnectMessage);
                 }
+                
+                // Update game status to WAITING_FOR_OPPONENT
+                gameSession.setStatus(GameStatus.WAITING_FOR_OPPONENT);
+                
+                // Don't remove the session immediately, wait for reconnection
+                return;
             }
             
-            // Remove session
-            gameSessions.remove(gameSession);
+            // If the game was waiting for opponent, just remove it
+            if (gameSession.getStatus() == GameStatus.WAITING_FOR_OPPONENT) {
+                gameSessions.remove(gameSession);
+                return;
+            }
+            
+            // If the game was completed, remove it
+            if (gameSession.getStatus() == GameStatus.COMPLETED) {
+                gameSessions.remove(gameSession);
+                return;
+            }
         }
     }
     
@@ -159,6 +168,9 @@ public class ChessServer {
                 break;
             case DISCONNECT:
                 // Disconnect is handled by the removeClient method
+                break;
+            case GAME_STATE:
+                handleGameState(message, sender);
                 break;
             default:
                 System.out.println("Unknown message type: " + message.getType());
@@ -887,6 +899,18 @@ public class ChessServer {
             }
         } else {
             System.out.println("DELETE_GAME request without gameId");
+        }
+    }
+    
+    // Add new method to handle game state changes
+    private void handleGameState(Message message, ClientHandler sender) {
+        GameSession gameSession = findGameSessionByClient(sender);
+        if (gameSession != null) {
+            ClientHandler opponent = gameSession.getOpponent(sender);
+            if (opponent != null) {
+                // Forward the game state message to the opponent
+                opponent.sendMessage(message);
+            }
         }
     }
 } 

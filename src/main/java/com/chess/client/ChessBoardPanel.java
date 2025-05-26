@@ -1366,4 +1366,55 @@ public class ChessBoardPanel extends JPanel {
         this.statusMessage = message;
         repaint();
     }
+
+    // Add new method to handle opponent disconnection
+    public void handleOpponentDisconnection() {
+        // Clear the board state
+        clearSelectionAndHighlights();
+        
+        // Show a message to the user
+        JOptionPane.showMessageDialog(this,
+            "Your opponent has disconnected. The game will be paused.",
+            "Opponent Disconnected",
+            JOptionPane.INFORMATION_MESSAGE);
+        
+        // Update status message
+        setStatusMessage("Waiting for opponent to reconnect...");
+        
+        // Disable board interaction
+        setLocked(true);
+    }
+
+    // Add new method to handle opponent reconnection
+    public void handleOpponentReconnection() {
+        // Enable board interaction
+        setLocked(false);
+        
+        // Clear status message
+        setStatusMessage("");
+        
+        // Repaint the board
+        repaint();
+    }
+
+    // Add new method to handle game cancellation
+    public void handleGameCancellation() {
+        // Clear the board state
+        clearSelectionAndHighlights();
+        
+        // Show a message to the user
+        JOptionPane.showMessageDialog(this,
+            "The game has been cancelled.",
+            "Game Cancelled",
+            JOptionPane.INFORMATION_MESSAGE);
+        
+        // Reset the board
+        resetBoard();
+        
+        // Update status message
+        setStatusMessage("Game cancelled");
+        
+        // Disable board interaction
+        setLocked(true);
+    }
 } 
