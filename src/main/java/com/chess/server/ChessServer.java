@@ -26,7 +26,7 @@ public class ChessServer {
     private static final int PORT = 9999;
     private final ExecutorService pool = Executors.newFixedThreadPool(10);
     private final CopyOnWriteArrayList<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private final List<GameSession> gameSessions = new ArrayList<>();
+    private final List<GameSession> gameSessions = new CopyOnWriteArrayList<>();
     private final Gson gson = new Gson();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     
@@ -185,6 +185,14 @@ public class ChessServer {
             sender.sendMessage(errorMsg);
             return;
         }
+        
+        // Username validation - sadece alfanumerik karakterler ve underscore
+        if (!username.matches("^[a-zA-Z0-9_]{3,20}$")) {
+            Message errorMsg = new Message(Message.MessageType.ERROR, 
+                "Username must be 3-20 characters long and contain only letters, numbers, and underscores");
+            sender.sendMessage(errorMsg);
+            return;
+        }
 
         // Check if username is already in use by an active client
         boolean usernameInUse = false;
@@ -280,6 +288,22 @@ public class ChessServer {
     }
     
     private void handleChat(Message message, ClientHandler sender) {
+        // Validate chat message
+        String content = message.getContent();
+        if (content == null || content.trim().isEmpty()) {
+            return; // Ignore empty messages
+        }
+        
+        // Limit message length
+        if (content.length() > 500) {
+            content = content.substring(0, 500);
+            message.setContent(content);
+        }
+        
+        // Basic HTML/XSS protection
+        content = content.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+        message.setContent(content);
+        
         // Only send to players in the same game session
         GameSession gameSession = findGameSessionByClient(sender);
         if (gameSession != null) {

@@ -3,7 +3,7 @@
 A multiplayer chess game implemented in Java with client-server architecture, allowing two players to play chess over a network connection.
 
 ## Current Version
-v1.5.1 - Improved connection handling, client disconnection detection, and username management. Fixed issues with username availability after player disconnections.
+v1.5.2 - Production code cleanup, enhanced security, and improved error handling. Removed debug output, added input validation, and improved thread safety.
 
 ## Features
 
@@ -20,7 +20,7 @@ v1.5.1 - Improved connection handling, client disconnection detection, and usern
 
 ### macOS Installation
 For macOS users, a DMG installer is available:
-1. Download the `Chess Game-1.5.1.dmg` file from the release directory
+1. Download the `Chess Game-1.5.2.dmg` file from the release directory
 2. Double-click the DMG file to open it
 3. Drag the Chess Game icon to the Applications folder
 4. Open the application from your Applications folder or Launchpad
@@ -28,7 +28,7 @@ For macOS users, a DMG installer is available:
 ### Manual Installation
 For other platforms, you can run the application directly using the JAR files:
 1. Ensure you have Java 17 or higher installed
-2. Download the chess-client-1.5.1.jar file
+2. Download the chess-client-1.5.2.jar file
 3. Run the client using the commands provided in the "Running the Application" section
 
 ## How to Play with Multiple Clients
@@ -120,7 +120,7 @@ mvn clean package
 ./run-server.sh
 
 # Or manually
-java -jar target/chess-server-1.5.0.jar
+java -jar target/chess-server-1.5.2.jar
 ```
 
 The server runs on port 9999 by default.
@@ -132,7 +132,7 @@ The server runs on port 9999 by default.
 ./run-client.sh
 
 # Or manually
-java -jar target/chess-client-1.5.0.jar
+java -jar target/chess-client-1.5.2.jar
 ```
 
 When the client starts, you'll need to enter:
@@ -149,7 +149,7 @@ To build the macOS DMG installer:
 ./build-macos-dmg.sh
 ```
 
-This will create a DMG file at `release/macos/Chess Game-1.5.0.dmg`.
+This will create a DMG file at `release/macos/Chess Game-1.5.2.dmg`.
 
 ## Screenshots
 

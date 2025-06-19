@@ -138,8 +138,7 @@ public class ChessBoardPanel extends JPanel {
     }
     
     public void makeMove(ChessMove move) {
-        // Debug
-        debugUIState("makeMove-beginning");
+
         
         // Save the last move
         setLastMove(move.getStartRow(), move.getStartCol(), move.getEndRow(), move.getEndCol());
@@ -167,8 +166,7 @@ public class ChessBoardPanel extends JPanel {
         // Force a repaint to ensure UI is updated
         repaint();
         
-        // Debug
-        debugUIState("makeMove-end");
+
         
         // Ensure UI refreshes on the Swing thread
         javax.swing.SwingUtilities.invokeLater(() -> {
@@ -380,8 +378,7 @@ public class ChessBoardPanel extends JPanel {
         int clickCol = clickX / SQUARE_SIZE;
         int clickRow = clickY / SQUARE_SIZE;
         
-        // Debug output
-        debugUIState("handleMouseClick-beginning");
+
         
         // Check if the board is flipped
         if (boardFlipped) {
@@ -418,8 +415,7 @@ public class ChessBoardPanel extends JPanel {
                 calculateValidMoves(clickRow, clickCol);
                 repaint();
                 
-                // Debug output
-                debugUIState("handleMouseClick-afterSelection");
+                
             } else if (clickedPiece != null) {
                 // Clicked on opponent's piece - show red flashing
                 clearSelectionAndHighlights();
@@ -439,8 +435,7 @@ public class ChessBoardPanel extends JPanel {
                 calculateValidMoves(clickRow, clickCol);
                 repaint();
                 
-                // Debug output
-                debugUIState("handleMouseClick-newPieceSelection");
+
             } 
             // If we click on a different square, try to make a move
             else {
@@ -466,8 +461,7 @@ public class ChessBoardPanel extends JPanel {
                     isFlashing = true;
                     flashTimer.restart();
                     
-                    // Debug output
-                    debugUIState("handleMouseClick-invalidMove");
+                    
                 }
             }
         }
@@ -486,8 +480,7 @@ public class ChessBoardPanel extends JPanel {
             flashTimer.stop();
         }
         
-        // Debug output
-        debugUIState("clearSelectionAndHighlights");
+
         
         repaint();
     }
@@ -761,7 +754,7 @@ public class ChessBoardPanel extends JPanel {
                     ChessPiece piece = chessBoard.getPiece(newRow, newCol);
                     if (piece != null && piece.getType() == ChessPiece.PieceType.PAWN && 
                         piece.getColor() == ChessPiece.PieceColor.BLACK) {
-                        System.out.println("DEBUG: Found attacking BLACK pawn at " + newRow + "," + newCol);
+            
                         return true;
                     }
                 }
@@ -776,7 +769,7 @@ public class ChessBoardPanel extends JPanel {
                     ChessPiece piece = chessBoard.getPiece(newRow, newCol);
                     if (piece != null && piece.getType() == ChessPiece.PieceType.PAWN && 
                         piece.getColor() == ChessPiece.PieceColor.WHITE) {
-                        System.out.println("DEBUG: Found attacking WHITE pawn at " + newRow + "," + newCol);
+            
                         return true;
                     }
                 }
@@ -989,8 +982,7 @@ public class ChessBoardPanel extends JPanel {
     }
     
     private void tryMove(int startRow, int startCol, int endRow, int endCol) {
-        // Debug output
-        debugUIState("tryMove-beginning");
+
         
         // Check if it's the player's turn
         if (chessBoard.getCurrentTurn() != playerColor) {
@@ -1022,8 +1014,7 @@ public class ChessBoardPanel extends JPanel {
                 selectedCol = -1;
                 validMoves.clear();
                 
-                // Debug output - invalid move
-                debugUIState("tryMove-illegalMove");
+                
                 
                 // Force repaint
                 repaint();
@@ -1074,8 +1065,7 @@ public class ChessBoardPanel extends JPanel {
             // Make the move on the board
             makeMove(move);
             
-            // Debug output - move successful
-            debugUIState("tryMove-moveSuccessful");
+
             
             // Send the move across the network (if online game)
             if (client != null) {
@@ -1088,8 +1078,7 @@ public class ChessBoardPanel extends JPanel {
             
             clearSelectionAndHighlights();
             
-            // Debug output - error
-            debugUIState("tryMove-error");
+
         }
     }
     
@@ -1349,18 +1338,7 @@ public class ChessBoardPanel extends JPanel {
         return !kingInCheck;
     }
     
-    // Helper function for debugging
-    private void debugUIState(String context) {
-        System.out.println("==== DEBUG (" + context + ") ====");
-        System.out.println("selectedRow: " + selectedRow);
-        System.out.println("selectedCol: " + selectedCol);
-        System.out.println("validMoves: " + validMoves.size());
-        System.out.println("invalidMove: " + invalidMove);
-        System.out.println("isFlashing: " + isFlashing);
-        System.out.println("flashTimer running: " + flashTimer.isRunning());
-        System.out.println("flashCount: " + flashCount);
-        System.out.println("==============");
-    }
+
     
     public void setStatusMessage(String message) {
         this.statusMessage = message;

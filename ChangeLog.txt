@@ -1,5 +1,29 @@
 # Multiplayer Chess Application - Changelog
 
+## v1.5.2 - 2025-01-19
+* Production code cleanup and optimization
+  - Removed all debug System.out.println statements from production code
+  - Cleaned up debug output that was impacting performance
+  - Removed debug helper functions and temporary code
+* Enhanced security and input validation
+  - Added comprehensive username validation (3-20 characters, alphanumeric + underscore)
+  - Implemented chat message validation and length limits (max 500 characters)
+  - Added basic XSS protection for chat messages
+  - Enhanced error messages for better user feedback
+* Improved error handling and resource management
+  - Enhanced try-catch blocks with better error reporting
+  - Improved connection cleanup with proper resource disposal
+  - Added comprehensive exception handling for network operations
+  - Implemented proper cleanup on connection failures
+* Thread safety improvements
+  - Changed GameSession list to thread-safe CopyOnWriteArrayList
+  - Improved concurrent access handling for game sessions
+  - Enhanced synchronization for multi-threaded operations
+* Code quality improvements
+  - Better separation of concerns in exception handling
+  - Improved resource management following best practices
+  - Enhanced code maintainability and readability
+
 ## v1.5.1 - 2025-05-15
 * Improved connection management system
   - Added client-server heartbeat mechanism with ping/pong messages

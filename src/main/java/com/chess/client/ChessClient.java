@@ -34,17 +34,42 @@ public class ChessClient {
     }
     
     public void connect() throws IOException {
-        socket = new Socket(host, port);
-        writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"), true);
-        reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
-        connected = true;
-        
-        // Kullanıcı adını sunucuya gönder
-        Message connectMessage = new Message(Message.MessageType.CONNECT, username);
-        sendMessage(connectMessage);
-        
-        // Mesaj dinleme thread'ini başlat
-        startListening();
+        try {
+            socket = new Socket(host, port);
+            writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"), true);
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
+            connected = true;
+            
+            // Kullanıcı adını sunucuya gönder
+            Message connectMessage = new Message(Message.MessageType.CONNECT, username);
+            sendMessage(connectMessage);
+            
+            // Mesaj dinleme thread'ini başlat
+            startListening();
+        } catch (IOException e) {
+            // Bağlantı kurulurken hata olursa kaynakları temizle
+            cleanup();
+            throw new IOException("Sunucuya bağlanırken hata oluştu: " + e.getMessage(), e);
+        }
+    }
+    
+    private void cleanup() {
+        connected = false;
+        try {
+            if (writer != null) writer.close();
+        } catch (Exception e) {
+            // Ignore cleanup errors
+        }
+        try {
+            if (reader != null) reader.close();
+        } catch (Exception e) {
+            // Ignore cleanup errors
+        }
+        try {
+            if (socket != null && !socket.isClosed()) socket.close();
+        } catch (Exception e) {
+            // Ignore cleanup errors
+        }
     }
     
     public void disconnect() {
@@ -54,25 +79,13 @@ public class ChessClient {
                 disconnectMessage.setContent(username + " ayrıldı.");
                 sendMessage(disconnectMessage);
                 
-                connected = false;
-                
                 if (listenerThread != null) {
                     listenerThread.interrupt();
                 }
-                
-                if (writer != null) {
-                    writer.close();
-                }
-                
-                if (reader != null) {
-                    reader.close();
-                }
-                
-                if (socket != null && !socket.isClosed()) {
-                    socket.close();
-                }
-            } catch (IOException e) {
-                System.err.println("Bağlantı kapatılırken hata: " + e.getMessage());
+            } catch (Exception e) {
+                System.err.println("Bağlantı kesilirken mesaj gönderme hatası: " + e.getMessage());
+            } finally {
+                cleanup();
             }
         }
     }
